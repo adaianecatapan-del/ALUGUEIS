@@ -125,7 +125,7 @@
                 <div class="col-6">
                   <label class="form-label small mb-1">Nº de parcelas</label>
                   <select name="iptu_n_parcelas" class="form-select form-select-sm" id="iptu_n_parcelas" onchange="calcTotal(); previewParcelas('iptu')">
-                    {% for n, label in [(1,'1x (cota única)'),(2,'2x'),(3,'3x'),(4,'4x'),(5,'5x'),(6,'6x'),(8,'8x'),(10,'10x'),(12,'12x (mensal)')] %}
+                    {% for n, label in [(1,'1x (cota única)'),(2,'2x'),(3,'3x'),(4,'4x'),(5,'5x'),(6,'6x'),(7,'7x'),(8,'8x'),(9,'9x'),(10,'10x'),(11,'11x'),(12,'12x (mensal)')] %}
                     <option value="{{ n }}" {% if inquilino and (inquilino.iptu_n_parcelas or 12) == n %}selected{% elif not inquilino and n == 12 %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                   </select>
@@ -155,7 +155,7 @@
                 <div class="col-6">
                   <label class="form-label small mb-1">Nº de parcelas</label>
                   <select name="taxa_lixo_n_parcelas" class="form-select form-select-sm" id="lixo_n_parcelas" onchange="calcTotal(); previewParcelas('lixo')">
-                    {% for n, label in [(1,'1x (cota única)'),(2,'2x'),(3,'3x'),(4,'4x'),(5,'5x'),(6,'6x'),(8,'8x'),(10,'10x'),(12,'12x (mensal)')] %}
+                    {% for n, label in [(1,'1x (cota única)'),(2,'2x'),(3,'3x'),(4,'4x'),(5,'5x'),(6,'6x'),(7,'7x'),(8,'8x'),(9,'9x'),(10,'10x'),(11,'11x'),(12,'12x (mensal)')] %}
                     <option value="{{ n }}" {% if inquilino and (inquilino.taxa_lixo_n_parcelas or 12) == n %}selected{% elif not inquilino and n == 12 %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                   </select>
