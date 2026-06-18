@@ -65,6 +65,22 @@ def init_db():
     conn.close()
 
 
+def migrate_db():
+    conn = get_db()
+    for col, defn in [
+        ('iptu_tipo', "TEXT DEFAULT 'mensal'"),
+        ('iptu_mes', 'INTEGER DEFAULT 1'),
+        ('taxa_lixo_tipo', "TEXT DEFAULT 'mensal'"),
+        ('taxa_lixo_mes', 'INTEGER DEFAULT 1'),
+    ]:
+        try:
+            conn.execute(f'ALTER TABLE inquilinos ADD COLUMN {col} {defn}')
+        except Exception:
+            pass
+    conn.commit()
+    conn.close()
+
+
 def atualizar_status_pagamentos():
     """Marca como atrasado pagamentos vencidos e não pagos."""
     conn = get_db()

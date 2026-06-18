@@ -7,5 +7,6 @@ if path not in sys.path:
 
 from app import app as application
 
-from database import init_db
+from database import init_db, migrate_db
 init_db()
+migrate_db()

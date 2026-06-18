@@ -67,13 +67,13 @@
             </div>
             <div class="col-12 col-md-4">
               <label class="form-label fw-semibold">Início do contrato</label>
-              <input type="date" name="data_inicio" class="form-control"
-                     value="{{ inquilino.data_inicio if inquilino }}">
+              <input type="date" name="data_inicio" class="form-control" id="data_inicio"
+                     value="{{ inquilino.data_inicio if inquilino }}" oninput="calcPintura()">
             </div>
             <div class="col-12 col-md-4">
               <label class="form-label fw-semibold">Fim do contrato</label>
-              <input type="date" name="data_fim" class="form-control"
-                     value="{{ inquilino.data_fim if inquilino }}">
+              <input type="date" name="data_fim" class="form-control" id="data_fim"
+                     value="{{ inquilino.data_fim if inquilino }}" oninput="calcPintura()">
             </div>
             <div class="col-12 col-md-4">
               <label class="form-label fw-semibold">Dia de vencimento</label>
@@ -93,13 +93,15 @@
         </div>
       </div>
 
-      <!-- Valores mensais -->
+      <!-- Valores -->
       <div class="card mb-3">
         <div class="card-header fw-semibold bg-light border-0">
-          <i class="bi bi-cash-stack me-2"></i>Valores Mensais (R$)
+          <i class="bi bi-cash-stack me-2"></i>Valores (R$)
         </div>
         <div class="card-body">
-          <div class="row g-3">
+          <div class="row g-4">
+
+            <!-- Aluguel -->
             <div class="col-12 col-sm-6">
               <label class="form-label fw-semibold">Aluguel</label>
               <div class="input-group">
@@ -109,38 +111,92 @@
                        oninput="calcTotal()">
               </div>
             </div>
-            <div class="col-12 col-sm-6">
-              <label class="form-label fw-semibold">Taxa de Pintura</label>
-              <div class="input-group">
-                <span class="input-group-text">R$</span>
-                <input type="number" name="taxa_pintura" class="form-control" step="0.01" min="0"
-                       id="val_pintura" value="{{ inquilino.taxa_pintura if inquilino else '0.00' }}"
-                       oninput="calcTotal()">
-              </div>
-            </div>
+
+            <!-- IPTU -->
             <div class="col-12 col-sm-6">
               <label class="form-label fw-semibold">IPTU</label>
-              <div class="input-group">
+              <div class="input-group mb-2">
                 <span class="input-group-text">R$</span>
                 <input type="number" name="iptu" class="form-control" step="0.01" min="0"
                        id="val_iptu" value="{{ inquilino.iptu if inquilino else '0.00' }}"
                        oninput="calcTotal()">
               </div>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="iptu_tipo" value="mensal"
+                         id="iptu_mensal" onchange="toggleMes('iptu')"
+                         {% if not inquilino or (inquilino.iptu_tipo or 'mensal') == 'mensal' %}checked{% endif %}>
+                  <label class="form-check-label small" for="iptu_mensal">Mensal</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="iptu_tipo" value="anual"
+                         id="iptu_anual" onchange="toggleMes('iptu')"
+                         {% if inquilino and inquilino.iptu_tipo == 'anual' %}checked{% endif %}>
+                  <label class="form-check-label small" for="iptu_anual">Cota única anual</label>
+                </div>
+              </div>
+              <div id="iptu_mes_div" class="mt-2 {% if not inquilino or (inquilino.iptu_tipo or 'mensal') != 'anual' %}d-none{% endif %}">
+                <label class="form-label small mb-1">Mês de vencimento</label>
+                <select name="iptu_mes" class="form-select form-select-sm">
+                  {% for m, nome in [(1,'Janeiro'),(2,'Fevereiro'),(3,'Março'),(4,'Abril'),(5,'Maio'),(6,'Junho'),(7,'Julho'),(8,'Agosto'),(9,'Setembro'),(10,'Outubro'),(11,'Novembro'),(12,'Dezembro')] %}
+                  <option value="{{ m }}" {% if inquilino and inquilino.iptu_mes == m %}selected{% endif %}>{{ nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
             </div>
+
+            <!-- Taxa de Lixo -->
             <div class="col-12 col-sm-6">
               <label class="form-label fw-semibold">Taxa de Coleta de Lixo</label>
-              <div class="input-group">
+              <div class="input-group mb-2">
                 <span class="input-group-text">R$</span>
                 <input type="number" name="taxa_lixo" class="form-control" step="0.01" min="0"
                        id="val_lixo" value="{{ inquilino.taxa_lixo if inquilino else '0.00' }}"
                        oninput="calcTotal()">
               </div>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="taxa_lixo_tipo" value="mensal"
+                         id="lixo_mensal" onchange="toggleMes('lixo')"
+                         {% if not inquilino or (inquilino.taxa_lixo_tipo or 'mensal') == 'mensal' %}checked{% endif %}>
+                  <label class="form-check-label small" for="lixo_mensal">Mensal</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="taxa_lixo_tipo" value="anual"
+                         id="lixo_anual" onchange="toggleMes('lixo')"
+                         {% if inquilino and inquilino.taxa_lixo_tipo == 'anual' %}checked{% endif %}>
+                  <label class="form-check-label small" for="lixo_anual">Cota única anual</label>
+                </div>
+              </div>
+              <div id="lixo_mes_div" class="mt-2 {% if not inquilino or (inquilino.taxa_lixo_tipo or 'mensal') != 'anual' %}d-none{% endif %}">
+                <label class="form-label small mb-1">Mês de vencimento</label>
+                <select name="taxa_lixo_mes" class="form-select form-select-sm">
+                  {% for m, nome in [(1,'Janeiro'),(2,'Fevereiro'),(3,'Março'),(4,'Abril'),(5,'Maio'),(6,'Junho'),(7,'Julho'),(8,'Agosto'),(9,'Setembro'),(10,'Outubro'),(11,'Novembro'),(12,'Dezembro')] %}
+                  <option value="{{ m }}" {% if inquilino and inquilino.taxa_lixo_mes == m %}selected{% endif %}>{{ nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
             </div>
+
+            <!-- Taxa de Pintura -->
+            <div class="col-12 col-sm-6">
+              <label class="form-label fw-semibold">Taxa de Pintura <span class="text-muted small fw-normal">(valor total)</span></label>
+              <div class="input-group mb-2">
+                <span class="input-group-text">R$</span>
+                <input type="number" name="taxa_pintura" class="form-control" step="0.01" min="0"
+                       id="val_pintura" value="{{ inquilino.taxa_pintura if inquilino else '0.00' }}"
+                       oninput="calcPintura(); calcTotal()">
+              </div>
+              <div id="pintura_preview" class="small"></div>
+            </div>
+
+            <!-- Total mensal -->
             <div class="col-12">
               <div class="alert alert-primary mb-0 d-flex justify-content-between align-items-center py-2">
-                <span class="fw-semibold">Total mensal:</span>
+                <span class="fw-semibold">Total mensal estimado:</span>
                 <span class="fs-5 fw-bold" id="total_mensal">R$ 0,00</span>
               </div>
+              <div class="form-text">Aluguel + valores mensais (IPTU e Lixo quando mensais). Pintura é cobrada separadamente.</div>
             </div>
           </div>
         </div>
@@ -167,14 +223,43 @@
 
 {% block scripts %}
 <script>
+const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function toggleMes(tipo) {
+  const radio = document.querySelector(`input[name="${tipo === 'iptu' ? 'iptu_tipo' : 'taxa_lixo_tipo'}"][value="anual"]`);
+  const div = document.getElementById(tipo === 'iptu' ? 'iptu_mes_div' : 'lixo_mes_div');
+  div.classList.toggle('d-none', !radio.checked);
+  calcTotal();
+}
+
 function calcTotal() {
   const a = parseFloat(document.getElementById('val_aluguel').value) || 0;
-  const p = parseFloat(document.getElementById('val_pintura').value) || 0;
   const i = parseFloat(document.getElementById('val_iptu').value) || 0;
   const l = parseFloat(document.getElementById('val_lixo').value) || 0;
-  const total = a + p + i + l;
+  const iptuMensal = document.getElementById('iptu_mensal').checked;
+  const lixoMensal = document.getElementById('lixo_mensal').checked;
+  const total = a + (iptuMensal ? i : 0) + (lixoMensal ? l : 0);
   document.getElementById('total_mensal').textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits: 2});
 }
-document.addEventListener('DOMContentLoaded', calcTotal);
+
+function calcPintura() {
+  const val = parseFloat(document.getElementById('val_pintura').value) || 0;
+  const inicio = document.getElementById('data_inicio').value;
+  const fim = document.getElementById('data_fim').value;
+  const div = document.getElementById('pintura_preview');
+  if (val <= 0) { div.innerHTML = ''; return; }
+  const metade = (val / 2).toLocaleString('pt-BR', {minimumFractionDigits: 2});
+  let html = '<div class="mt-1">';
+  if (inicio) html += `<span class="badge bg-info text-dark me-1"><i class="bi bi-door-open me-1"></i>Entrada: R$ ${metade} em ${inicio.split('-').reverse().join('/')}</span>`;
+  if (fim) html += `<span class="badge bg-warning text-dark"><i class="bi bi-door-closed me-1"></i>Saída: R$ ${metade} em ${fim.split('-').reverse().join('/')}</span>`;
+  if (!inicio && !fim) html += '<span class="text-muted">Informe as datas do contrato</span>';
+  html += '</div>';
+  div.innerHTML = html;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  calcTotal();
+  calcPintura();
+});
 </script>
 {% endblock %}

@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
-from database import get_db, init_db, atualizar_status_pagamentos
+from database import get_db, init_db, migrate_db, atualizar_status_pagamentos
 from datetime import date, datetime
 import calendar
 
@@ -10,6 +10,30 @@ app.secret_key = 'alugueis-secret-2024'
 @app.context_processor
 def inject_globals():
     return {'hoje': date.today().isoformat(), 'ano_atual': date.today().year}
+
+
+# ─── HELPER PINTURA ───────────────────────────────────────────────────────────
+
+def _criar_pintura_payments(conn, inq_id, taxa_pintura, data_inicio, data_fim):
+    if not taxa_pintura or taxa_pintura <= 0:
+        return
+    hoje = date.today().isoformat()
+    metade = round(taxa_pintura / 2, 2)
+    for data, obs in [(data_inicio, 'pintura-inicio'), (data_fim, 'pintura-fim')]:
+        if not data:
+            continue
+        existe = conn.execute(
+            "SELECT id FROM pagamentos WHERE inquilino_id=? AND observacao=?",
+            (inq_id, obs)
+        ).fetchone()
+        if not existe:
+            status = 'atrasado' if data < hoje else 'pendente'
+            conn.execute('''
+                INSERT INTO pagamentos
+                (inquilino_id, mes_referencia, taxa_pintura, total,
+                 data_vencimento, status, observacao)
+                VALUES (?,?,?,?,?,?,?)
+            ''', (inq_id, data[:7], metade, metade, data, status, obs))
 
 
 # ─── DASHBOARD ────────────────────────────────────────────────────────────────
@@ -152,22 +176,32 @@ def inquilino_novo():
     conn = get_db()
     imoveis = conn.execute('SELECT * FROM imoveis ORDER BY endereco').fetchall()
     if request.method == 'POST':
-        conn.execute('''
+        data_inicio = request.form.get('data_inicio') or None
+        data_fim = request.form.get('data_fim') or None
+        taxa_pintura = float(request.form.get('taxa_pintura') or 0)
+        cursor = conn.execute('''
             INSERT INTO inquilinos
             (nome, cpf, telefone, email, imovel_id, data_inicio, data_fim,
-             aluguel, taxa_pintura, iptu, taxa_lixo, dia_vencimento, observacao)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+             aluguel, taxa_pintura, iptu, taxa_lixo, dia_vencimento,
+             iptu_tipo, iptu_mes, taxa_lixo_tipo, taxa_lixo_mes, observacao)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ''', (
             request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
             request.form.get('email'), request.form.get('imovel_id') or None,
-            request.form.get('data_inicio'), request.form.get('data_fim'),
+            data_inicio, data_fim,
             float(request.form.get('aluguel') or 0),
-            float(request.form.get('taxa_pintura') or 0),
+            taxa_pintura,
             float(request.form.get('iptu') or 0),
             float(request.form.get('taxa_lixo') or 0),
             int(request.form.get('dia_vencimento') or 5),
+            request.form.get('iptu_tipo', 'mensal'),
+            int(request.form.get('iptu_mes') or 1),
+            request.form.get('taxa_lixo_tipo', 'mensal'),
+            int(request.form.get('taxa_lixo_mes') or 1),
             request.form.get('observacao')
         ))
+        inq_id = cursor.lastrowid
+        _criar_pintura_payments(conn, inq_id, taxa_pintura, data_inicio, data_fim)
         conn.commit()
         conn.close()
         flash('Inquilino cadastrado com sucesso!', 'success')
@@ -182,22 +216,31 @@ def inquilino_editar(id):
     inquilino = conn.execute('SELECT * FROM inquilinos WHERE id=?', (id,)).fetchone()
     imoveis = conn.execute('SELECT * FROM imoveis ORDER BY endereco').fetchall()
     if request.method == 'POST':
+        data_inicio = request.form.get('data_inicio') or None
+        data_fim = request.form.get('data_fim') or None
+        taxa_pintura = float(request.form.get('taxa_pintura') or 0)
         conn.execute('''
             UPDATE inquilinos SET nome=?, cpf=?, telefone=?, email=?, imovel_id=?,
             data_inicio=?, data_fim=?, aluguel=?, taxa_pintura=?, iptu=?, taxa_lixo=?,
-            dia_vencimento=?, ativo=?, observacao=? WHERE id=?
+            dia_vencimento=?, iptu_tipo=?, iptu_mes=?, taxa_lixo_tipo=?, taxa_lixo_mes=?,
+            ativo=?, observacao=? WHERE id=?
         ''', (
             request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
             request.form.get('email'), request.form.get('imovel_id') or None,
-            request.form.get('data_inicio'), request.form.get('data_fim'),
+            data_inicio, data_fim,
             float(request.form.get('aluguel') or 0),
-            float(request.form.get('taxa_pintura') or 0),
+            taxa_pintura,
             float(request.form.get('iptu') or 0),
             float(request.form.get('taxa_lixo') or 0),
             int(request.form.get('dia_vencimento') or 5),
+            request.form.get('iptu_tipo', 'mensal'),
+            int(request.form.get('iptu_mes') or 1),
+            request.form.get('taxa_lixo_tipo', 'mensal'),
+            int(request.form.get('taxa_lixo_mes') or 1),
             1 if request.form.get('ativo') else 0,
             request.form.get('observacao'), id
         ))
+        _criar_pintura_payments(conn, id, taxa_pintura, data_inicio, data_fim)
         conn.commit()
         conn.close()
         flash('Inquilino atualizado!', 'success')
@@ -281,16 +324,28 @@ def pagamento_gerar():
                 ultimo_dia = calendar.monthrange(ano, mes)[1]
                 dia_venc = min(inq['dia_vencimento'], ultimo_dia)
                 data_venc = f"{ano:04d}-{mes:02d}-{dia_venc:02d}"
-                total = (inq['aluguel'] + inq['taxa_pintura'] +
-                         inq['iptu'] + inq['taxa_lixo'])
+
+                iptu_tipo = inq['iptu_tipo'] or 'mensal'
+                iptu_val = (inq['iptu'] or 0) if (
+                    iptu_tipo == 'mensal' or
+                    (iptu_tipo == 'anual' and mes == (inq['iptu_mes'] or 1))
+                ) else 0
+
+                lixo_tipo = inq['taxa_lixo_tipo'] or 'mensal'
+                lixo_val = (inq['taxa_lixo'] or 0) if (
+                    lixo_tipo == 'mensal' or
+                    (lixo_tipo == 'anual' and mes == (inq['taxa_lixo_mes'] or 1))
+                ) else 0
+
+                total = (inq['aluguel'] or 0) + iptu_val + lixo_val
                 status = 'atrasado' if data_venc < date.today().isoformat() else 'pendente'
                 conn.execute('''
                     INSERT INTO pagamentos
                     (inquilino_id, mes_referencia, aluguel, taxa_pintura, iptu, taxa_lixo,
                      total, data_vencimento, status)
                     VALUES (?,?,?,?,?,?,?,?,?)
-                ''', (iid, mes_ref, inq['aluguel'], inq['taxa_pintura'],
-                      inq['iptu'], inq['taxa_lixo'], total, data_venc, status))
+                ''', (iid, mes_ref, inq['aluguel'] or 0, 0,
+                      iptu_val, lixo_val, total, data_venc, status))
                 gerados += 1
         conn.commit()
         conn.close()
@@ -456,6 +511,7 @@ def api_inquilino(id):
 
 if __name__ == '__main__':
     init_db()
+    migrate_db()
     import socket
     hostname = socket.gethostname()
     local_ip = socket.gethostbyname(hostname)
