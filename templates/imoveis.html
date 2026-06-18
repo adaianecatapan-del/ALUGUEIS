@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}Imóveis{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="fw-bold mb-0"><i class="bi bi-building me-2 text-primary"></i>Imóveis</h4>
+  <a href="{{ url_for('imovel_novo') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>Novo Imóvel
+  </a>
+</div>
+
+{% if imoveis %}
+<div class="row g-3">
+  {% for im in imoveis %}
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h6 class="fw-bold mb-0">{{ im.endereco }}</h6>
+          <span class="badge bg-primary-subtle text-primary rounded-pill">
+            {{ im.total_inquilinos }} inquilino{{ 's' if im.total_inquilinos != 1 }}
+          </span>
+        </div>
+        {% if im.complemento %}<p class="text-muted small mb-1">{{ im.complemento }}</p>{% endif %}
+        {% if im.bairro or im.cidade %}
+        <p class="text-muted small mb-1">
+          {% if im.bairro %}{{ im.bairro }}{% endif %}
+          {% if im.bairro and im.cidade %} — {% endif %}
+          {% if im.cidade %}{{ im.cidade }}{% endif %}
+        </p>
+        {% endif %}
+        {% if im.descricao %}<p class="text-muted small mb-2">{{ im.descricao }}</p>{% endif %}
+      </div>
+      <div class="card-footer bg-transparent border-0 pt-0 d-flex gap-2">
+        <a href="{{ url_for('imovel_editar', id=im.id) }}" class="btn btn-sm btn-outline-primary flex-fill">
+          <i class="bi bi-pencil me-1"></i>Editar
+        </a>
+        <form method="post" action="{{ url_for('imovel_excluir', id=im.id) }}" onsubmit="return confirm('Excluir este imóvel?')">
+          <button class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-trash"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="card-body text-center py-5">
+    <i class="bi bi-building fs-1 text-muted mb-3"></i>
+    <h5 class="text-muted">Nenhum imóvel cadastrado</h5>
+    <a href="{{ url_for('imovel_novo') }}" class="btn btn-primary mt-2">
+      <i class="bi bi-plus-lg me-1"></i>Cadastrar primeiro imóvel
+    </a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

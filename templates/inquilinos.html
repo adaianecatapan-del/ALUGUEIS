@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Inquilinos{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="fw-bold mb-0"><i class="bi bi-people me-2 text-primary"></i>Inquilinos</h4>
+  <a href="{{ url_for('inquilino_novo') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>Novo Inquilino
+  </a>
+</div>
+
+{% if inquilinos %}
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Nome</th>
+            <th class="d-none d-md-table-cell">Imóvel</th>
+            <th class="d-none d-sm-table-cell">Telefone</th>
+            <th class="text-end">Aluguel Total</th>
+            <th>Situação</th>
+            <th class="text-center">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in inquilinos %}
+          <tr>
+            <td>
+              <strong>{{ i.nome }}</strong>
+              {% if i.email %}<br><small class="text-muted">{{ i.email }}</small>{% endif %}
+              <div class="d-md-none text-muted small mt-1">{{ i.imovel_endereco or '—' }}</div>
+            </td>
+            <td class="d-none d-md-table-cell">
+              <small>{{ i.imovel_endereco or '—' }}</small>
+            </td>
+            <td class="d-none d-sm-table-cell">{{ i.telefone or '—' }}</td>
+            <td class="text-end">
+              <strong>R$ {{ "%.2f"|format((i.aluguel or 0) + (i.taxa_pintura or 0) + (i.iptu or 0) + (i.taxa_lixo or 0)) }}</strong>
+              <br>
+              <small class="text-muted">Vence dia {{ i.dia_vencimento }}</small>
+            </td>
+            <td>
+              {% if i.ativo %}
+                <span class="badge bg-success">Ativo</span>
+              {% else %}
+                <span class="badge bg-secondary">Inativo</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <div class="d-flex gap-1 justify-content-center">
+                <a href="{{ url_for('inquilino_editar', id=i.id) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <form method="post" action="{{ url_for('inquilino_excluir', id=i.id) }}" onsubmit="return confirm('Excluir {{ i.nome }}?')">
+                  <button class="btn btn-sm btn-outline-danger" title="Excluir">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="card-body text-center py-5">
+    <i class="bi bi-people fs-1 text-muted mb-3"></i>
+    <h5 class="text-muted">Nenhum inquilino cadastrado</h5>
+    <a href="{{ url_for('inquilino_novo') }}" class="btn btn-primary mt-2">
+      <i class="bi bi-person-plus me-1"></i>Cadastrar primeiro inquilino
+    </a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

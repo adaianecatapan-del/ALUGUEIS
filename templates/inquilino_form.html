@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Editar' if inquilino else 'Novo' }} Inquilino{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <a href="{{ url_for('inquilinos') }}" class="btn btn-outline-secondary btn-sm me-3">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="fw-bold mb-0">
+    <i class="bi bi-person me-2 text-primary"></i>
+    {{ 'Editar Inquilino' if inquilino else 'Novo Inquilino' }}
+  </h4>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <form method="post">
+      <!-- Dados pessoais -->
+      <div class="card mb-3">
+        <div class="card-header fw-semibold bg-light border-0">
+          <i class="bi bi-person-vcard me-2"></i>Dados Pessoais
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12 col-md-8">
+              <label class="form-label fw-semibold">Nome completo <span class="text-danger">*</span></label>
+              <input type="text" name="nome" class="form-control" required
+                     value="{{ inquilino.nome if inquilino }}">
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">CPF</label>
+              <input type="text" name="cpf" class="form-control"
+                     value="{{ inquilino.cpf if inquilino }}" placeholder="000.000.000-00">
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Telefone</label>
+              <input type="text" name="telefone" class="form-control"
+                     value="{{ inquilino.telefone if inquilino }}" placeholder="(00) 00000-0000">
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">E-mail</label>
+              <input type="email" name="email" class="form-control"
+                     value="{{ inquilino.email if inquilino }}">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contrato -->
+      <div class="card mb-3">
+        <div class="card-header fw-semibold bg-light border-0">
+          <i class="bi bi-file-earmark-text me-2"></i>Contrato
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-semibold">Imóvel</label>
+              <select name="imovel_id" class="form-select">
+                <option value="">— Selecione —</option>
+                {% for im in imoveis %}
+                <option value="{{ im.id }}"
+                  {% if inquilino and inquilino.imovel_id == im.id %}selected{% endif %}>
+                  {{ im.endereco }}{% if im.complemento %} — {{ im.complemento }}{% endif %}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">Início do contrato</label>
+              <input type="date" name="data_inicio" class="form-control"
+                     value="{{ inquilino.data_inicio if inquilino }}">
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">Fim do contrato</label>
+              <input type="date" name="data_fim" class="form-control"
+                     value="{{ inquilino.data_fim if inquilino }}">
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">Dia de vencimento</label>
+              <input type="number" name="dia_vencimento" class="form-control"
+                     min="1" max="28" value="{{ inquilino.dia_vencimento if inquilino else 5 }}">
+            </div>
+            {% if inquilino %}
+            <div class="col-12">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="ativo" id="ativo"
+                       {% if inquilino.ativo %}checked{% endif %}>
+                <label class="form-check-label" for="ativo">Contrato ativo</label>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Valores mensais -->
+      <div class="card mb-3">
+        <div class="card-header fw-semibold bg-light border-0">
+          <i class="bi bi-cash-stack me-2"></i>Valores Mensais (R$)
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12 col-sm-6">
+              <label class="form-label fw-semibold">Aluguel</label>
+              <div class="input-group">
+                <span class="input-group-text">R$</span>
+                <input type="number" name="aluguel" class="form-control" step="0.01" min="0"
+                       id="val_aluguel" value="{{ inquilino.aluguel if inquilino else '0.00' }}"
+                       oninput="calcTotal()">
+              </div>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label fw-semibold">Taxa de Pintura</label>
+              <div class="input-group">
+                <span class="input-group-text">R$</span>
+                <input type="number" name="taxa_pintura" class="form-control" step="0.01" min="0"
+                       id="val_pintura" value="{{ inquilino.taxa_pintura if inquilino else '0.00' }}"
+                       oninput="calcTotal()">
+              </div>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label fw-semibold">IPTU</label>
+              <div class="input-group">
+                <span class="input-group-text">R$</span>
+                <input type="number" name="iptu" class="form-control" step="0.01" min="0"
+                       id="val_iptu" value="{{ inquilino.iptu if inquilino else '0.00' }}"
+                       oninput="calcTotal()">
+              </div>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label fw-semibold">Taxa de Coleta de Lixo</label>
+              <div class="input-group">
+                <span class="input-group-text">R$</span>
+                <input type="number" name="taxa_lixo" class="form-control" step="0.01" min="0"
+                       id="val_lixo" value="{{ inquilino.taxa_lixo if inquilino else '0.00' }}"
+                       oninput="calcTotal()">
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="alert alert-primary mb-0 d-flex justify-content-between align-items-center py-2">
+                <span class="fw-semibold">Total mensal:</span>
+                <span class="fs-5 fw-bold" id="total_mensal">R$ 0,00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Observações -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <label class="form-label fw-semibold">Observações</label>
+          <textarea name="observacao" class="form-control" rows="2">{{ inquilino.observacao if inquilino }}</textarea>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-fill">
+          <i class="bi bi-check-lg me-1"></i>Salvar
+        </button>
+        <a href="{{ url_for('inquilinos') }}" class="btn btn-outline-secondary flex-fill">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function calcTotal() {
+  const a = parseFloat(document.getElementById('val_aluguel').value) || 0;
+  const p = parseFloat(document.getElementById('val_pintura').value) || 0;
+  const i = parseFloat(document.getElementById('val_iptu').value) || 0;
+  const l = parseFloat(document.getElementById('val_lixo').value) || 0;
+  const total = a + p + i + l;
+  document.getElementById('total_mensal').textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+}
+document.addEventListener('DOMContentLoaded', calcTotal);
+</script>
+{% endblock %}

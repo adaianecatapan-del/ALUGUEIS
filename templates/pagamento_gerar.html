@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Gerar Cobranças{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <a href="{{ url_for('pagamentos') }}" class="btn btn-outline-secondary btn-sm me-3">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="fw-bold mb-0">
+    <i class="bi bi-magic me-2 text-primary"></i>Gerar Cobranças do Mês
+  </h4>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-7">
+    <div class="card">
+      <div class="card-body p-4">
+        {% if inquilinos %}
+        <form method="post">
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Mês de referência <span class="text-danger">*</span></label>
+            <input type="month" name="mes_referencia" class="form-control" required value="{{ mes_atual }}">
+            <div class="form-text">Os pagamentos serão criados com o dia de vencimento de cada inquilino.</div>
+          </div>
+
+          <label class="form-label fw-semibold">Selecionar inquilinos</label>
+          <div class="mb-2 d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAll(true)">Selecionar todos</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAll(false)">Desmarcar todos</button>
+          </div>
+
+          <div class="border rounded p-3 mb-4" style="max-height:350px;overflow-y:auto">
+            {% for i in inquilinos %}
+            <div class="form-check py-2 border-bottom">
+              <input class="form-check-input inq-check" type="checkbox" name="inquilino_ids"
+                     value="{{ i.id }}" id="inq_{{ i.id }}" checked>
+              <label class="form-check-label w-100" for="inq_{{ i.id }}">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong>{{ i.nome }}</strong>
+                    <br>
+                    <small class="text-muted">Vence dia {{ i.dia_vencimento }}</small>
+                  </div>
+                  <span class="text-success fw-semibold small">
+                    R$ {{ "%.2f"|format((i.aluguel or 0)+(i.taxa_pintura or 0)+(i.iptu or 0)+(i.taxa_lixo or 0)) }}
+                  </span>
+                </div>
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-fill">
+              <i class="bi bi-magic me-1"></i>Gerar Cobranças
+            </button>
+            <a href="{{ url_for('pagamentos') }}" class="btn btn-outline-secondary flex-fill">Cancelar</a>
+          </div>
+        </form>
+        {% else %}
+        <div class="text-center py-4">
+          <i class="bi bi-people fs-1 text-muted mb-3"></i>
+          <h5 class="text-muted">Nenhum inquilino ativo</h5>
+          <a href="{{ url_for('inquilino_novo') }}" class="btn btn-primary mt-2">Cadastrar inquilino</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleAll(check) {
+  document.querySelectorAll('.inq-check').forEach(cb => cb.checked = check);
+}
+</script>
+{% endblock %}

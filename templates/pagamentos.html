@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% block title %}Pagamentos{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="fw-bold mb-0"><i class="bi bi-cash-stack me-2 text-primary"></i>Pagamentos</h4>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('pagamento_gerar') }}" class="btn btn-primary">
+      <i class="bi bi-magic me-1"></i><span class="d-none d-sm-inline">Gerar Mês</span>
+    </a>
+    <a href="{{ url_for('pagamento_novo') }}" class="btn btn-outline-primary">
+      <i class="bi bi-plus-lg me-1"></i><span class="d-none d-sm-inline">Avulso</span>
+    </a>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+  <div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-12 col-sm-4 col-md-3">
+        <label class="form-label small fw-semibold mb-1">Inquilino</label>
+        <select name="inquilino_id" class="form-select form-select-sm">
+          <option value="">Todos</option>
+          {% for i in inquilinos %}
+          <option value="{{ i.id }}" {% if filtro_inquilino == i.id|string %}selected{% endif %}>
+            {{ i.nome }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-sm-4 col-md-3">
+        <label class="form-label small fw-semibold mb-1">Mês</label>
+        <input type="month" name="mes" class="form-control form-control-sm" value="{{ filtro_mes }}">
+      </div>
+      <div class="col-6 col-sm-4 col-md-3">
+        <label class="form-label small fw-semibold mb-1">Status</label>
+        <select name="status" class="form-select form-select-sm">
+          <option value="">Todos</option>
+          <option value="pendente" {% if filtro_status == 'pendente' %}selected{% endif %}>Pendente</option>
+          <option value="pago" {% if filtro_status == 'pago' %}selected{% endif %}>Pago</option>
+          <option value="atrasado" {% if filtro_status == 'atrasado' %}selected{% endif %}>Atrasado</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-primary flex-fill">
+          <i class="bi bi-search me-1"></i>Filtrar
+        </button>
+        <a href="{{ url_for('pagamentos') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-x-lg"></i>
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if pagamentos %}
+<!-- Resumo rápido -->
+{% set total_val = pagamentos | sum(attribute='total') %}
+{% set pagos_val = pagamentos | selectattr('status','equalto','pago') | sum(attribute='total') %}
+{% set pendente_val = pagamentos | selectattr('status','in',['pendente','atrasado']) | sum(attribute='total') %}
+<div class="row g-2 mb-3">
+  <div class="col-4">
+    <div class="card text-center py-2" style="border-left:3px solid #6c757d">
+      <small class="text-muted">Total</small>
+      <strong class="d-block">R$ {{ "%.2f"|format(total_val) }}</strong>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card text-center py-2" style="border-left:3px solid #198754">
+      <small class="text-muted">Recebido</small>
+      <strong class="d-block text-success">R$ {{ "%.2f"|format(pagos_val) }}</strong>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card text-center py-2" style="border-left:3px solid #dc3545">
+      <small class="text-muted">Pendente</small>
+      <strong class="d-block text-danger">R$ {{ "%.2f"|format(pendente_val) }}</strong>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Inquilino</th>
+            <th class="d-none d-md-table-cell">Referência</th>
+            <th class="d-none d-sm-table-cell">Vencimento</th>
+            <th class="d-none d-lg-table-cell text-end">Composição</th>
+            <th class="text-end">Total</th>
+            <th class="text-center">Status</th>
+            <th class="text-center">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pagamentos %}
+          <tr>
+            <td>
+              <strong>{{ p.nome }}</strong>
+              <div class="d-md-none text-muted small">{{ p.mes_referencia }}</div>
+              <div class="d-sm-none text-muted small">Vence: {{ p.data_vencimento }}</div>
+            </td>
+            <td class="d-none d-md-table-cell">{{ p.mes_referencia }}</td>
+            <td class="d-none d-sm-table-cell">
+              {{ p.data_vencimento }}
+              {% if p.data_pagamento %}
+              <br><small class="text-success">Pago: {{ p.data_pagamento }}</small>
+              {% endif %}
+            </td>
+            <td class="d-none d-lg-table-cell text-end">
+              <small class="text-muted">
+                Aluguel: R$ {{ "%.2f"|format(p.aluguel) }}<br>
+                {% if p.taxa_pintura > 0 %}Pintura: R$ {{ "%.2f"|format(p.taxa_pintura) }}<br>{% endif %}
+                {% if p.iptu > 0 %}IPTU: R$ {{ "%.2f"|format(p.iptu) }}<br>{% endif %}
+                {% if p.taxa_lixo > 0 %}Lixo: R$ {{ "%.2f"|format(p.taxa_lixo) }}{% endif %}
+              </small>
+            </td>
+            <td class="text-end fw-bold">R$ {{ "%.2f"|format(p.total) }}</td>
+            <td class="text-center">
+              {% if p.status == 'pago' %}
+                <span class="badge badge-pago">PAGO</span>
+              {% elif p.status == 'atrasado' %}
+                <span class="badge badge-atrasado">ATRASADO</span>
+              {% else %}
+                <span class="badge badge-pendente">PENDENTE</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <div class="d-flex gap-1 justify-content-center flex-wrap">
+                {% if p.status != 'pago' %}
+                <form method="post" action="{{ url_for('pagamento_pagar', id=p.id) }}" class="d-inline">
+                  <input type="hidden" name="data_pagamento" value="{{ hoje }}">
+                  <button class="btn btn-sm btn-success" title="Confirmar pagamento">
+                    <i class="bi bi-check-lg"></i>
+                  </button>
+                </form>
+                {% endif %}
+                <a href="{{ url_for('pagamento_editar', id=p.id) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <form method="post" action="{{ url_for('pagamento_excluir', id=p.id) }}" onsubmit="return confirm('Excluir este pagamento?')">
+                  <button class="btn btn-sm btn-outline-danger" title="Excluir">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="card-body text-center py-5">
+    <i class="bi bi-cash-stack fs-1 text-muted mb-3"></i>
+    <h5 class="text-muted">Nenhum pagamento encontrado</h5>
+    <a href="{{ url_for('pagamento_gerar') }}" class="btn btn-primary mt-2">
+      <i class="bi bi-magic me-1"></i>Gerar cobranças do mês
+    </a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

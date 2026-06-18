@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="fw-bold mb-0"><i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard</h4>
+  <span class="text-muted small">{{ hoje }}</span>
+</div>
+
+<!-- Cards de resumo -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card card-stat h-100" style="border-color:#0d6efd">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <p class="text-muted small mb-1">Imóveis</p>
+            <h3 class="fw-bold mb-0">{{ total_imoveis }}</h3>
+          </div>
+          <i class="bi bi-building fs-2 text-primary opacity-50"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card card-stat h-100" style="border-color:#198754">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <p class="text-muted small mb-1">Inquilinos Ativos</p>
+            <h3 class="fw-bold mb-0">{{ total_inquilinos }}</h3>
+          </div>
+          <i class="bi bi-people fs-2 text-success opacity-50"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card card-stat h-100" style="border-color:#ffc107">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <p class="text-muted small mb-1">Pendentes</p>
+            <h3 class="fw-bold mb-0">{{ pendentes }}</h3>
+          </div>
+          <i class="bi bi-clock fs-2 text-warning opacity-50"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card card-stat h-100" style="border-color:#dc3545">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <p class="text-muted small mb-1">Valor Pendente</p>
+            <h3 class="fw-bold mb-0 fs-5">R$ {{ "%.2f"|format(valor_pendente) }}</h3>
+          </div>
+          <i class="bi bi-cash-stack fs-2 text-danger opacity-50"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Alertas de vencimento -->
+  {% if alertas %}
+  <div class="col-12 col-lg-6">
+    <div class="card">
+      <div class="card-header bg-warning bg-opacity-10 border-0">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-bell-fill text-warning me-2"></i>Vencendo em breve</h6>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for a in alertas %}
+          <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+            <div>
+              <strong>{{ a.nome }}</strong>
+              <br><small class="text-muted">{{ a.endereco }}</small>
+            </div>
+            <div class="text-end">
+              <span class="badge badge-pendente">{{ a.data_vencimento }}</span>
+              <br><small class="text-success fw-bold">R$ {{ "%.2f"|format(a.total) }}</small>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Atrasados -->
+  {% if atrasados %}
+  <div class="col-12 col-lg-6">
+    <div class="card">
+      <div class="card-header bg-danger bg-opacity-10 border-0">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Pagamentos Atrasados</h6>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for a in atrasados %}
+          <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+            <div>
+              <strong>{{ a.nome }}</strong>
+              <br><small class="text-muted">Ref: {{ a.mes_referencia }} | Venc: {{ a.data_vencimento }}</small>
+            </div>
+            <div class="text-end">
+              <span class="badge badge-atrasado">ATRASADO</span>
+              <br><small class="text-danger fw-bold">R$ {{ "%.2f"|format(a.total) }}</small>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not alertas and not atrasados %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body text-center py-5 text-success">
+        <i class="bi bi-check-circle-fill fs-1 mb-3"></i>
+        <h5>Tudo em dia!</h5>
+        <p class="text-muted mb-0">Sem pagamentos atrasados ou vencendo em breve.</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Últimos pagamentos -->
+  {% if ultimos_pagos %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-success bg-opacity-10 border-0">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-check2-all text-success me-2"></i>Últimos Pagamentos Recebidos</h6>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Inquilino</th>
+                <th>Referência</th>
+                <th>Data Pgto</th>
+                <th class="text-end">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in ultimos_pagos %}
+              <tr>
+                <td>{{ p.nome }}</td>
+                <td>{{ p.mes_referencia }}</td>
+                <td>{{ p.data_pagamento }}</td>
+                <td class="text-end text-success fw-bold">R$ {{ "%.2f"|format(p.total) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Atalhos rápidos -->
+<div class="row g-3 mt-1">
+  <div class="col-12">
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('pagamento_gerar') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-2"></i>Gerar Cobranças do Mês
+      </a>
+      <a href="{{ url_for('inquilino_novo') }}" class="btn btn-outline-primary">
+        <i class="bi bi-person-plus me-2"></i>Novo Inquilino
+      </a>
+      <a href="{{ url_for('imovel_novo') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-building me-2"></i>Novo Imóvel
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+import sys
+import os
+
+path = os.path.dirname(__file__)
+if path not in sys.path:
+    sys.path.insert(0, path)
+
+from app import app as application
+
+from database import init_db
+init_db()
