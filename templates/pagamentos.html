@@ -112,10 +112,12 @@
             </td>
             <td class="d-none d-lg-table-cell text-end">
               <small class="text-muted">
-                Aluguel: R$ {{ "%.2f"|format(p.aluguel) }}<br>
-                {% if p.taxa_pintura > 0 %}Pintura: R$ {{ "%.2f"|format(p.taxa_pintura) }}<br>{% endif %}
-                {% if p.iptu > 0 %}IPTU: R$ {{ "%.2f"|format(p.iptu) }}<br>{% endif %}
-                {% if p.taxa_lixo > 0 %}Lixo: R$ {{ "%.2f"|format(p.taxa_lixo) }}{% endif %}
+                {% if p.aluguel > 0 %}Aluguel: R$ {{ "%.2f"|format(p.aluguel) }}<br>{% endif %}
+                {% if p.taxa_pintura > 0 %}
+                  Pintura{% if p.observacao in ['pintura-inicio','pintura-fim'] %} ({{ 'entrada' if p.observacao == 'pintura-inicio' else 'saída' }}){% endif %}: R$ {{ "%.2f"|format(p.taxa_pintura) }}<br>
+                {% endif %}
+                {% if p.iptu > 0 %}IPTU{% if p.iptu_parcela %} {{ p.iptu_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.iptu) }}<br>{% endif %}
+                {% if p.taxa_lixo > 0 %}Lixo{% if p.lixo_parcela %} {{ p.lixo_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.taxa_lixo) }}{% endif %}
               </small>
             </td>
             <td class="text-end fw-bold">R$ {{ "%.2f"|format(p.total) }}</td>

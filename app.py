@@ -12,6 +12,20 @@ def inject_globals():
     return {'hoje': date.today().isoformat(), 'ano_atual': date.today().year}
 
 
+# ─── HELPERS ──────────────────────────────────────────────────────────────────
+
+def _get_parcela(valor_total, n_parcelas, mes_inicio, mes_atual):
+    """Retorna (valor_parcela, num, total) se mes_atual é mês de parcela, senão None."""
+    if not valor_total or valor_total <= 0:
+        return None
+    n = n_parcelas or 12
+    mi = mes_inicio or 1
+    offset = (mes_atual - mi) % 12
+    if offset < n:
+        return (round(valor_total / n, 2), offset + 1, n)
+    return None
+
+
 # ─── HELPER PINTURA ───────────────────────────────────────────────────────────
 
 def _criar_pintura_payments(conn, inq_id, taxa_pintura, data_inicio, data_fim):
@@ -183,8 +197,9 @@ def inquilino_novo():
             INSERT INTO inquilinos
             (nome, cpf, telefone, email, imovel_id, data_inicio, data_fim,
              aluguel, taxa_pintura, iptu, taxa_lixo, dia_vencimento,
-             iptu_tipo, iptu_mes, taxa_lixo_tipo, taxa_lixo_mes, observacao)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             iptu_tipo, iptu_mes, taxa_lixo_tipo, taxa_lixo_mes,
+             iptu_n_parcelas, taxa_lixo_n_parcelas, observacao)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ''', (
             request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
             request.form.get('email'), request.form.get('imovel_id') or None,
@@ -198,6 +213,8 @@ def inquilino_novo():
             int(request.form.get('iptu_mes') or 1),
             request.form.get('taxa_lixo_tipo', 'mensal'),
             int(request.form.get('taxa_lixo_mes') or 1),
+            int(request.form.get('iptu_n_parcelas') or 12),
+            int(request.form.get('taxa_lixo_n_parcelas') or 12),
             request.form.get('observacao')
         ))
         inq_id = cursor.lastrowid
@@ -223,7 +240,7 @@ def inquilino_editar(id):
             UPDATE inquilinos SET nome=?, cpf=?, telefone=?, email=?, imovel_id=?,
             data_inicio=?, data_fim=?, aluguel=?, taxa_pintura=?, iptu=?, taxa_lixo=?,
             dia_vencimento=?, iptu_tipo=?, iptu_mes=?, taxa_lixo_tipo=?, taxa_lixo_mes=?,
-            ativo=?, observacao=? WHERE id=?
+            iptu_n_parcelas=?, taxa_lixo_n_parcelas=?, ativo=?, observacao=? WHERE id=?
         ''', (
             request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
             request.form.get('email'), request.form.get('imovel_id') or None,
@@ -237,6 +254,8 @@ def inquilino_editar(id):
             int(request.form.get('iptu_mes') or 1),
             request.form.get('taxa_lixo_tipo', 'mensal'),
             int(request.form.get('taxa_lixo_mes') or 1),
+            int(request.form.get('iptu_n_parcelas') or 12),
+            int(request.form.get('taxa_lixo_n_parcelas') or 12),
             1 if request.form.get('ativo') else 0,
             request.form.get('observacao'), id
         ))
@@ -325,27 +344,34 @@ def pagamento_gerar():
                 dia_venc = min(inq['dia_vencimento'], ultimo_dia)
                 data_venc = f"{ano:04d}-{mes:02d}-{dia_venc:02d}"
 
-                iptu_tipo = inq['iptu_tipo'] or 'mensal'
-                iptu_val = (inq['iptu'] or 0) if (
-                    iptu_tipo == 'mensal' or
-                    (iptu_tipo == 'anual' and mes == (inq['iptu_mes'] or 1))
-                ) else 0
+                iptu_info = _get_parcela(
+                    inq['iptu'] or 0,
+                    inq['iptu_n_parcelas'] or 12,
+                    inq['iptu_mes'] or 1,
+                    mes
+                )
+                iptu_val = iptu_info[0] if iptu_info else 0
+                iptu_parcela = f"{iptu_info[1]}/{iptu_info[2]}" if iptu_info else None
 
-                lixo_tipo = inq['taxa_lixo_tipo'] or 'mensal'
-                lixo_val = (inq['taxa_lixo'] or 0) if (
-                    lixo_tipo == 'mensal' or
-                    (lixo_tipo == 'anual' and mes == (inq['taxa_lixo_mes'] or 1))
-                ) else 0
+                lixo_info = _get_parcela(
+                    inq['taxa_lixo'] or 0,
+                    inq['taxa_lixo_n_parcelas'] or 12,
+                    inq['taxa_lixo_mes'] or 1,
+                    mes
+                )
+                lixo_val = lixo_info[0] if lixo_info else 0
+                lixo_parcela = f"{lixo_info[1]}/{lixo_info[2]}" if lixo_info else None
 
                 total = (inq['aluguel'] or 0) + iptu_val + lixo_val
                 status = 'atrasado' if data_venc < date.today().isoformat() else 'pendente'
                 conn.execute('''
                     INSERT INTO pagamentos
                     (inquilino_id, mes_referencia, aluguel, taxa_pintura, iptu, taxa_lixo,
-                     total, data_vencimento, status)
-                    VALUES (?,?,?,?,?,?,?,?,?)
+                     total, data_vencimento, status, iptu_parcela, lixo_parcela)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?)
                 ''', (iid, mes_ref, inq['aluguel'] or 0, 0,
-                      iptu_val, lixo_val, total, data_venc, status))
+                      iptu_val, lixo_val, total, data_venc, status,
+                      iptu_parcela, lixo_parcela))
                 gerados += 1
         conn.commit()
         conn.close()

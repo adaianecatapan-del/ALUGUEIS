@@ -72,9 +72,19 @@ def migrate_db():
         ('iptu_mes', 'INTEGER DEFAULT 1'),
         ('taxa_lixo_tipo', "TEXT DEFAULT 'mensal'"),
         ('taxa_lixo_mes', 'INTEGER DEFAULT 1'),
+        ('iptu_n_parcelas', 'INTEGER DEFAULT 12'),
+        ('taxa_lixo_n_parcelas', 'INTEGER DEFAULT 12'),
     ]:
         try:
             conn.execute(f'ALTER TABLE inquilinos ADD COLUMN {col} {defn}')
+        except Exception:
+            pass
+    for col, defn in [
+        ('iptu_parcela', 'TEXT'),
+        ('lixo_parcela', 'TEXT'),
+    ]:
+        try:
+            conn.execute(f'ALTER TABLE pagamentos ADD COLUMN {col} {defn}')
         except Exception:
             pass
     conn.commit()

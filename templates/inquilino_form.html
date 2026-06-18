@@ -114,68 +114,62 @@
 
             <!-- IPTU -->
             <div class="col-12 col-sm-6">
-              <label class="form-label fw-semibold">IPTU</label>
+              <label class="form-label fw-semibold">IPTU <span class="text-muted small fw-normal">(valor total anual)</span></label>
               <div class="input-group mb-2">
                 <span class="input-group-text">R$</span>
                 <input type="number" name="iptu" class="form-control" step="0.01" min="0"
                        id="val_iptu" value="{{ inquilino.iptu if inquilino else '0.00' }}"
-                       oninput="calcTotal()">
+                       oninput="calcTotal(); previewParcelas('iptu')">
               </div>
-              <div class="d-flex gap-3">
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="iptu_tipo" value="mensal"
-                         id="iptu_mensal" onchange="toggleMes('iptu')"
-                         {% if not inquilino or (inquilino.iptu_tipo or 'mensal') == 'mensal' %}checked{% endif %}>
-                  <label class="form-check-label small" for="iptu_mensal">Mensal</label>
+              <div class="row g-2 mb-1">
+                <div class="col-6">
+                  <label class="form-label small mb-1">Nº de parcelas</label>
+                  <select name="iptu_n_parcelas" class="form-select form-select-sm" id="iptu_n_parcelas" onchange="calcTotal(); previewParcelas('iptu')">
+                    {% for n, label in [(1,'1x (cota única)'),(2,'2x'),(3,'3x'),(4,'4x'),(5,'5x'),(6,'6x'),(8,'8x'),(10,'10x'),(12,'12x (mensal)')] %}
+                    <option value="{{ n }}" {% if inquilino and (inquilino.iptu_n_parcelas or 12) == n %}selected{% elif not inquilino and n == 12 %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
                 </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="iptu_tipo" value="anual"
-                         id="iptu_anual" onchange="toggleMes('iptu')"
-                         {% if inquilino and inquilino.iptu_tipo == 'anual' %}checked{% endif %}>
-                  <label class="form-check-label small" for="iptu_anual">Cota única anual</label>
+                <div class="col-6">
+                  <label class="form-label small mb-1">Mês de início</label>
+                  <select name="iptu_mes" class="form-select form-select-sm" id="iptu_mes" onchange="previewParcelas('iptu')">
+                    {% for m, nome in [(1,'Jan'),(2,'Fev'),(3,'Mar'),(4,'Abr'),(5,'Mai'),(6,'Jun'),(7,'Jul'),(8,'Ago'),(9,'Set'),(10,'Out'),(11,'Nov'),(12,'Dez')] %}
+                    <option value="{{ m }}" {% if inquilino and (inquilino.iptu_mes or 1) == m %}selected{% elif not inquilino and m == 1 %}selected{% endif %}>{{ nome }}</option>
+                    {% endfor %}
+                  </select>
                 </div>
               </div>
-              <div id="iptu_mes_div" class="mt-2 {% if not inquilino or (inquilino.iptu_tipo or 'mensal') != 'anual' %}d-none{% endif %}">
-                <label class="form-label small mb-1">Mês de vencimento</label>
-                <select name="iptu_mes" class="form-select form-select-sm">
-                  {% for m, nome in [(1,'Janeiro'),(2,'Fevereiro'),(3,'Março'),(4,'Abril'),(5,'Maio'),(6,'Junho'),(7,'Julho'),(8,'Agosto'),(9,'Setembro'),(10,'Outubro'),(11,'Novembro'),(12,'Dezembro')] %}
-                  <option value="{{ m }}" {% if inquilino and inquilino.iptu_mes == m %}selected{% endif %}>{{ nome }}</option>
-                  {% endfor %}
-                </select>
-              </div>
+              <div id="iptu_preview" class="small text-muted"></div>
             </div>
 
             <!-- Taxa de Lixo -->
             <div class="col-12 col-sm-6">
-              <label class="form-label fw-semibold">Taxa de Coleta de Lixo</label>
+              <label class="form-label fw-semibold">Taxa de Coleta de Lixo <span class="text-muted small fw-normal">(valor total anual)</span></label>
               <div class="input-group mb-2">
                 <span class="input-group-text">R$</span>
                 <input type="number" name="taxa_lixo" class="form-control" step="0.01" min="0"
                        id="val_lixo" value="{{ inquilino.taxa_lixo if inquilino else '0.00' }}"
-                       oninput="calcTotal()">
+                       oninput="calcTotal(); previewParcelas('lixo')">
               </div>
-              <div class="d-flex gap-3">
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="taxa_lixo_tipo" value="mensal"
-                         id="lixo_mensal" onchange="toggleMes('lixo')"
-                         {% if not inquilino or (inquilino.taxa_lixo_tipo or 'mensal') == 'mensal' %}checked{% endif %}>
-                  <label class="form-check-label small" for="lixo_mensal">Mensal</label>
+              <div class="row g-2 mb-1">
+                <div class="col-6">
+                  <label class="form-label small mb-1">Nº de parcelas</label>
+                  <select name="taxa_lixo_n_parcelas" class="form-select form-select-sm" id="lixo_n_parcelas" onchange="calcTotal(); previewParcelas('lixo')">
+                    {% for n, label in [(1,'1x (cota única)'),(2,'2x'),(3,'3x'),(4,'4x'),(5,'5x'),(6,'6x'),(8,'8x'),(10,'10x'),(12,'12x (mensal)')] %}
+                    <option value="{{ n }}" {% if inquilino and (inquilino.taxa_lixo_n_parcelas or 12) == n %}selected{% elif not inquilino and n == 12 %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
                 </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="taxa_lixo_tipo" value="anual"
-                         id="lixo_anual" onchange="toggleMes('lixo')"
-                         {% if inquilino and inquilino.taxa_lixo_tipo == 'anual' %}checked{% endif %}>
-                  <label class="form-check-label small" for="lixo_anual">Cota única anual</label>
+                <div class="col-6">
+                  <label class="form-label small mb-1">Mês de início</label>
+                  <select name="taxa_lixo_mes" class="form-select form-select-sm" id="lixo_mes" onchange="previewParcelas('lixo')">
+                    {% for m, nome in [(1,'Jan'),(2,'Fev'),(3,'Mar'),(4,'Abr'),(5,'Mai'),(6,'Jun'),(7,'Jul'),(8,'Ago'),(9,'Set'),(10,'Out'),(11,'Nov'),(12,'Dez')] %}
+                    <option value="{{ m }}" {% if inquilino and (inquilino.taxa_lixo_mes or 1) == m %}selected{% elif not inquilino and m == 1 %}selected{% endif %}>{{ nome }}</option>
+                    {% endfor %}
+                  </select>
                 </div>
               </div>
-              <div id="lixo_mes_div" class="mt-2 {% if not inquilino or (inquilino.taxa_lixo_tipo or 'mensal') != 'anual' %}d-none{% endif %}">
-                <label class="form-label small mb-1">Mês de vencimento</label>
-                <select name="taxa_lixo_mes" class="form-select form-select-sm">
-                  {% for m, nome in [(1,'Janeiro'),(2,'Fevereiro'),(3,'Março'),(4,'Abril'),(5,'Maio'),(6,'Junho'),(7,'Julho'),(8,'Agosto'),(9,'Setembro'),(10,'Outubro'),(11,'Novembro'),(12,'Dezembro')] %}
-                  <option value="{{ m }}" {% if inquilino and inquilino.taxa_lixo_mes == m %}selected{% endif %}>{{ nome }}</option>
-                  {% endfor %}
-                </select>
-              </div>
+              <div id="lixo_preview" class="small text-muted"></div>
             </div>
 
             <!-- Taxa de Pintura -->
@@ -223,23 +217,32 @@
 
 {% block scripts %}
 <script>
-const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-
-function toggleMes(tipo) {
-  const radio = document.querySelector(`input[name="${tipo === 'iptu' ? 'iptu_tipo' : 'taxa_lixo_tipo'}"][value="anual"]`);
-  const div = document.getElementById(tipo === 'iptu' ? 'iptu_mes_div' : 'lixo_mes_div');
-  div.classList.toggle('d-none', !radio.checked);
-  calcTotal();
-}
+const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
 function calcTotal() {
   const a = parseFloat(document.getElementById('val_aluguel').value) || 0;
   const i = parseFloat(document.getElementById('val_iptu').value) || 0;
   const l = parseFloat(document.getElementById('val_lixo').value) || 0;
-  const iptuMensal = document.getElementById('iptu_mensal').checked;
-  const lixoMensal = document.getElementById('lixo_mensal').checked;
-  const total = a + (iptuMensal ? i : 0) + (lixoMensal ? l : 0);
+  const ni = parseInt(document.getElementById('iptu_n_parcelas').value) || 12;
+  const nl = parseInt(document.getElementById('lixo_n_parcelas').value) || 12;
+  // Parcela mensal estimada (se todos os meses tivessem parcela)
+  const iptuMensal = ni === 12 ? i / 12 : 0;
+  const lixoMensal = nl === 12 ? l / 12 : 0;
+  const total = a + iptuMensal + lixoMensal;
   document.getElementById('total_mensal').textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+}
+
+function previewParcelas(tipo) {
+  const isIptu = tipo === 'iptu';
+  const valor = parseFloat(document.getElementById(isIptu ? 'val_iptu' : 'val_lixo').value) || 0;
+  const n = parseInt(document.getElementById(isIptu ? 'iptu_n_parcelas' : 'lixo_n_parcelas').value) || 12;
+  const mi = parseInt(document.getElementById(isIptu ? 'iptu_mes' : 'lixo_mes').value) || 1;
+  const div = document.getElementById(isIptu ? 'iptu_preview' : 'lixo_preview');
+  if (valor <= 0) { div.innerHTML = ''; return; }
+  const parcVal = (valor / n).toLocaleString('pt-BR', {minimumFractionDigits: 2});
+  const nomes = [];
+  for (let i = 0; i < n; i++) nomes.push(meses[(mi - 1 + i) % 12]);
+  div.innerHTML = `<span class="badge bg-secondary">${n}x de R$ ${parcVal}</span> <span class="ms-1">${nomes.join(', ')}</span>`;
 }
 
 function calcPintura() {
@@ -260,6 +263,8 @@ function calcPintura() {
 document.addEventListener('DOMContentLoaded', function() {
   calcTotal();
   calcPintura();
+  previewParcelas('iptu');
+  previewParcelas('lixo');
 });
 </script>
 {% endblock %}
