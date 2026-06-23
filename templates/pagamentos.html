@@ -106,6 +106,10 @@
           {% endif %}
           {% if p.iptu > 0 %}<div>IPTU{% if p.iptu_parcela %} {{ p.iptu_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.iptu) }}</div>{% endif %}
           {% if p.taxa_lixo > 0 %}<div>Lixo{% if p.lixo_parcela %} {{ p.lixo_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.taxa_lixo) }}</div>{% endif %}
+          {% if p.gas and p.gas > 0 %}<div>Gás{% if p.gas_parcela %} {{ p.gas_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.gas) }}</div>{% endif %}
+          {% if p.internet and p.internet > 0 %}<div>Internet{% if p.internet_parcela %} {{ p.internet_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.internet) }}</div>{% endif %}
+          {% if p.taxa_agua and p.taxa_agua > 0 %}<div>Água{% if p.taxa_agua_parcela %} {{ p.taxa_agua_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.taxa_agua) }}</div>{% endif %}
+          {% if p.taxa_administracao and p.taxa_administracao > 0 %}<div>Administração{% if p.taxa_administracao_parcela %} {{ p.taxa_administracao_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.taxa_administracao) }}</div>{% endif %}
           {% if p.data_pagamento %}
             <div class="text-success">
               Pago em {{ p.data_pagamento.split('-')[2] }}/{{ p.data_pagamento.split('-')[1] }}/{{ p.data_pagamento.split('-')[0] }}

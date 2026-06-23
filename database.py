@@ -76,6 +76,18 @@ def migrate_db():
         ('taxa_lixo_n_parcelas', 'INTEGER DEFAULT 12'),
         ('contrato_arquivo', 'TEXT'),
         ('data_ultimo_reajuste', 'TEXT'),
+        ('gas', 'REAL DEFAULT 0'),
+        ('gas_n_parcelas', 'INTEGER DEFAULT 12'),
+        ('gas_mes', 'INTEGER DEFAULT 1'),
+        ('internet', 'REAL DEFAULT 0'),
+        ('internet_n_parcelas', 'INTEGER DEFAULT 12'),
+        ('internet_mes', 'INTEGER DEFAULT 1'),
+        ('taxa_agua', 'REAL DEFAULT 0'),
+        ('taxa_agua_n_parcelas', 'INTEGER DEFAULT 12'),
+        ('taxa_agua_mes', 'INTEGER DEFAULT 1'),
+        ('taxa_administracao', 'REAL DEFAULT 0'),
+        ('taxa_administracao_n_parcelas', 'INTEGER DEFAULT 12'),
+        ('taxa_administracao_mes', 'INTEGER DEFAULT 1'),
     ]:
         try:
             conn.execute(f'ALTER TABLE inquilinos ADD COLUMN {col} {defn}')
@@ -85,6 +97,14 @@ def migrate_db():
         ('iptu_parcela', 'TEXT'),
         ('lixo_parcela', 'TEXT'),
         ('forma_pagamento', 'TEXT'),
+        ('gas', 'REAL DEFAULT 0'),
+        ('gas_parcela', 'TEXT'),
+        ('internet', 'REAL DEFAULT 0'),
+        ('internet_parcela', 'TEXT'),
+        ('taxa_agua', 'REAL DEFAULT 0'),
+        ('taxa_agua_parcela', 'TEXT'),
+        ('taxa_administracao', 'REAL DEFAULT 0'),
+        ('taxa_administracao_parcela', 'TEXT'),
     ]:
         try:
             conn.execute(f'ALTER TABLE pagamentos ADD COLUMN {col} {defn}')

@@ -21,6 +21,18 @@ def inject_globals():
 
 # ─── HELPERS ──────────────────────────────────────────────────────────────────
 
+# Encargos que seguem o padrão "valor total + nº de parcelas + mês de início"
+ENCARGOS = ['iptu', 'taxa_lixo', 'gas', 'internet', 'taxa_agua', 'taxa_administracao']
+PARCELA_COL = {
+    'iptu': 'iptu_parcela',
+    'taxa_lixo': 'lixo_parcela',
+    'gas': 'gas_parcela',
+    'internet': 'internet_parcela',
+    'taxa_agua': 'taxa_agua_parcela',
+    'taxa_administracao': 'taxa_administracao_parcela',
+}
+
+
 def _get_parcela(valor_total, n_parcelas, mes_inicio, mes_atual):
     """Retorna (valor_parcela, num, total) se mes_atual é mês de parcela, senão None."""
     if not valor_total or valor_total <= 0:
@@ -31,6 +43,24 @@ def _get_parcela(valor_total, n_parcelas, mes_inicio, mes_atual):
     if offset < n:
         return (round(valor_total / n, 2), offset + 1, n)
     return None
+
+
+def _encargo_cols():
+    """Nomes das colunas (valor, parcelas, mês) de todos os encargos, para inquilinos."""
+    cols = []
+    for e in ENCARGOS:
+        cols += [e, f'{e}_n_parcelas', f'{e}_mes']
+    return cols
+
+
+def _encargo_form_values():
+    """Lê do formulário os valores de cada encargo, na mesma ordem de _encargo_cols()."""
+    vals = []
+    for e in ENCARGOS:
+        vals.append(float(request.form.get(e) or 0))
+        vals.append(int(request.form.get(f'{e}_n_parcelas') or 12))
+        vals.append(int(request.form.get(f'{e}_mes') or 1))
+    return vals
 
 
 # ─── HELPER PINTURA ───────────────────────────────────────────────────────────
@@ -221,31 +251,20 @@ def inquilino_novo():
         data_inicio = request.form.get('data_inicio') or None
         data_fim = request.form.get('data_fim') or None
         taxa_pintura = float(request.form.get('taxa_pintura') or 0)
-        cursor = conn.execute('''
-            INSERT INTO inquilinos
-            (nome, cpf, telefone, email, imovel_id, data_inicio, data_fim,
-             aluguel, taxa_pintura, iptu, taxa_lixo, dia_vencimento,
-             iptu_tipo, iptu_mes, taxa_lixo_tipo, taxa_lixo_mes,
-             iptu_n_parcelas, taxa_lixo_n_parcelas, data_ultimo_reajuste, observacao)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        ''', (
-            request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
-            request.form.get('email'), request.form.get('imovel_id') or None,
-            data_inicio, data_fim,
-            float(request.form.get('aluguel') or 0),
-            taxa_pintura,
-            float(request.form.get('iptu') or 0),
-            float(request.form.get('taxa_lixo') or 0),
-            int(request.form.get('dia_vencimento') or 5),
-            request.form.get('iptu_tipo', 'mensal'),
-            int(request.form.get('iptu_mes') or 1),
-            request.form.get('taxa_lixo_tipo', 'mensal'),
-            int(request.form.get('taxa_lixo_mes') or 1),
-            int(request.form.get('iptu_n_parcelas') or 12),
-            int(request.form.get('taxa_lixo_n_parcelas') or 12),
-            data_inicio,
-            request.form.get('observacao')
-        ))
+
+        cols = (['nome', 'cpf', 'telefone', 'email', 'imovel_id', 'data_inicio', 'data_fim',
+                  'aluguel', 'taxa_pintura', 'dia_vencimento'] +
+                _encargo_cols() + ['data_ultimo_reajuste', 'observacao'])
+        vals = ([request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
+                  request.form.get('email'), request.form.get('imovel_id') or None,
+                  data_inicio, data_fim,
+                  float(request.form.get('aluguel') or 0), taxa_pintura,
+                  int(request.form.get('dia_vencimento') or 5)] +
+                _encargo_form_values() + [data_inicio, request.form.get('observacao')])
+        placeholders = ','.join(['?'] * len(cols))
+        cursor = conn.execute(
+            f"INSERT INTO inquilinos ({','.join(cols)}) VALUES ({placeholders})", vals
+        )
         inq_id = cursor.lastrowid
         contrato_arquivo = _salvar_contrato(inq_id)
         if contrato_arquivo:
@@ -272,31 +291,19 @@ def inquilino_editar(id):
         data_ultimo_reajuste = inquilino['data_ultimo_reajuste'] or data_inicio
         if request.form.get('aplicar_reajuste') == '1':
             data_ultimo_reajuste = date.today().isoformat()
-        conn.execute('''
-            UPDATE inquilinos SET nome=?, cpf=?, telefone=?, email=?, imovel_id=?,
-            data_inicio=?, data_fim=?, aluguel=?, taxa_pintura=?, iptu=?, taxa_lixo=?,
-            dia_vencimento=?, iptu_tipo=?, iptu_mes=?, taxa_lixo_tipo=?, taxa_lixo_mes=?,
-            iptu_n_parcelas=?, taxa_lixo_n_parcelas=?, data_ultimo_reajuste=?,
-            ativo=?, observacao=? WHERE id=?
-        ''', (
-            request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
-            request.form.get('email'), request.form.get('imovel_id') or None,
-            data_inicio, data_fim,
-            novo_aluguel,
-            taxa_pintura,
-            float(request.form.get('iptu') or 0),
-            float(request.form.get('taxa_lixo') or 0),
-            int(request.form.get('dia_vencimento') or 5),
-            request.form.get('iptu_tipo', 'mensal'),
-            int(request.form.get('iptu_mes') or 1),
-            request.form.get('taxa_lixo_tipo', 'mensal'),
-            int(request.form.get('taxa_lixo_mes') or 1),
-            int(request.form.get('iptu_n_parcelas') or 12),
-            int(request.form.get('taxa_lixo_n_parcelas') or 12),
-            data_ultimo_reajuste,
-            1 if request.form.get('ativo') else 0,
-            request.form.get('observacao'), id
-        ))
+
+        cols = (['nome', 'cpf', 'telefone', 'email', 'imovel_id', 'data_inicio', 'data_fim',
+                  'aluguel', 'taxa_pintura', 'dia_vencimento'] +
+                _encargo_cols() + ['data_ultimo_reajuste', 'ativo', 'observacao'])
+        vals = ([request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
+                  request.form.get('email'), request.form.get('imovel_id') or None,
+                  data_inicio, data_fim, novo_aluguel, taxa_pintura,
+                  int(request.form.get('dia_vencimento') or 5)] +
+                _encargo_form_values() +
+                [data_ultimo_reajuste, 1 if request.form.get('ativo') else 0,
+                 request.form.get('observacao')])
+        set_clause = ', '.join(f'{c}=?' for c in cols)
+        conn.execute(f"UPDATE inquilinos SET {set_clause} WHERE id=?", vals + [id])
         contrato_arquivo = _salvar_contrato(id)
         if contrato_arquivo:
             conn.execute('UPDATE inquilinos SET contrato_arquivo=? WHERE id=?', (contrato_arquivo, id))
@@ -394,34 +401,28 @@ def pagamento_gerar():
                 dia_venc = min(inq['dia_vencimento'], ultimo_dia)
                 data_venc = f"{ano:04d}-{mes:02d}-{dia_venc:02d}"
 
-                iptu_info = _get_parcela(
-                    inq['iptu'] or 0,
-                    inq['iptu_n_parcelas'] or 12,
-                    inq['iptu_mes'] or 1,
-                    mes
-                )
-                iptu_val = iptu_info[0] if iptu_info else 0
-                iptu_parcela = f"{iptu_info[1]}/{iptu_info[2]}" if iptu_info else None
+                total = inq['aluguel'] or 0
+                pag_cols = ['inquilino_id', 'mes_referencia', 'aluguel', 'taxa_pintura',
+                            'data_vencimento']
+                pag_vals = [iid, mes_ref, inq['aluguel'] or 0, 0, data_venc]
+                for e in ENCARGOS:
+                    info = _get_parcela(
+                        inq[e] or 0, inq[f'{e}_n_parcelas'] or 12, inq[f'{e}_mes'] or 1, mes
+                    )
+                    val = info[0] if info else 0
+                    parcela = f"{info[1]}/{info[2]}" if info else None
+                    total += val
+                    pag_cols += [e, PARCELA_COL[e]]
+                    pag_vals += [val, parcela]
 
-                lixo_info = _get_parcela(
-                    inq['taxa_lixo'] or 0,
-                    inq['taxa_lixo_n_parcelas'] or 12,
-                    inq['taxa_lixo_mes'] or 1,
-                    mes
-                )
-                lixo_val = lixo_info[0] if lixo_info else 0
-                lixo_parcela = f"{lixo_info[1]}/{lixo_info[2]}" if lixo_info else None
-
-                total = (inq['aluguel'] or 0) + iptu_val + lixo_val
                 status = 'atrasado' if data_venc < date.today().isoformat() else 'pendente'
-                conn.execute('''
-                    INSERT INTO pagamentos
-                    (inquilino_id, mes_referencia, aluguel, taxa_pintura, iptu, taxa_lixo,
-                     total, data_vencimento, status, iptu_parcela, lixo_parcela)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?)
-                ''', (iid, mes_ref, inq['aluguel'] or 0, 0,
-                      iptu_val, lixo_val, total, data_venc, status,
-                      iptu_parcela, lixo_parcela))
+                pag_cols += ['total', 'status']
+                pag_vals += [total, status]
+                placeholders = ','.join(['?'] * len(pag_cols))
+                conn.execute(
+                    f"INSERT INTO pagamentos ({','.join(pag_cols)}) VALUES ({placeholders})",
+                    pag_vals
+                )
                 gerados += 1
         conn.commit()
         conn.close()
@@ -443,21 +444,19 @@ def pagamento_novo():
     if request.method == 'POST':
         aluguel = float(request.form.get('aluguel') or 0)
         taxa_pintura = float(request.form.get('taxa_pintura') or 0)
-        iptu = float(request.form.get('iptu') or 0)
-        taxa_lixo = float(request.form.get('taxa_lixo') or 0)
-        total = aluguel + taxa_pintura + iptu + taxa_lixo
+        encargos_vals = {e: float(request.form.get(e) or 0) for e in ENCARGOS}
+        total = aluguel + taxa_pintura + sum(encargos_vals.values())
         data_venc = request.form.get('data_vencimento')
         status = 'atrasado' if data_venc and data_venc < date.today().isoformat() else 'pendente'
-        conn.execute('''
-            INSERT INTO pagamentos
-            (inquilino_id, mes_referencia, aluguel, taxa_pintura, iptu, taxa_lixo,
-             total, data_vencimento, status, observacao, forma_pagamento)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)
-        ''', (
-            request.form['inquilino_id'], request.form['mes_referencia'],
-            aluguel, taxa_pintura, iptu, taxa_lixo, total, data_venc,
-            status, request.form.get('observacao'), request.form.get('forma_pagamento')
-        ))
+
+        cols = (['inquilino_id', 'mes_referencia', 'aluguel', 'taxa_pintura'] + ENCARGOS +
+                ['total', 'data_vencimento', 'status', 'observacao', 'forma_pagamento'])
+        vals = ([request.form['inquilino_id'], request.form['mes_referencia'],
+                  aluguel, taxa_pintura] + [encargos_vals[e] for e in ENCARGOS] +
+                [total, data_venc, status, request.form.get('observacao'),
+                 request.form.get('forma_pagamento')])
+        placeholders = ','.join(['?'] * len(cols))
+        conn.execute(f"INSERT INTO pagamentos ({','.join(cols)}) VALUES ({placeholders})", vals)
         conn.commit()
         conn.close()
         flash('Pagamento lançado!', 'success')
@@ -493,21 +492,20 @@ def pagamento_editar(id):
     if request.method == 'POST':
         aluguel = float(request.form.get('aluguel') or 0)
         taxa_pintura = float(request.form.get('taxa_pintura') or 0)
-        iptu = float(request.form.get('iptu') or 0)
-        taxa_lixo = float(request.form.get('taxa_lixo') or 0)
-        total = aluguel + taxa_pintura + iptu + taxa_lixo
+        encargos_vals = {e: float(request.form.get(e) or 0) for e in ENCARGOS}
+        total = aluguel + taxa_pintura + sum(encargos_vals.values())
         data_pag = request.form.get('data_pagamento') or None
         status = request.form.get('status', 'pendente')
-        conn.execute('''
-            UPDATE pagamentos SET inquilino_id=?, mes_referencia=?, aluguel=?,
-            taxa_pintura=?, iptu=?, taxa_lixo=?, total=?, data_vencimento=?,
-            data_pagamento=?, status=?, observacao=?, forma_pagamento=? WHERE id=?
-        ''', (
-            request.form['inquilino_id'], request.form['mes_referencia'],
-            aluguel, taxa_pintura, iptu, taxa_lixo, total,
-            request.form.get('data_vencimento'), data_pag, status,
-            request.form.get('observacao'), request.form.get('forma_pagamento'), id
-        ))
+
+        cols = (['inquilino_id', 'mes_referencia', 'aluguel', 'taxa_pintura'] + ENCARGOS +
+                ['total', 'data_vencimento', 'data_pagamento', 'status', 'observacao',
+                 'forma_pagamento'])
+        vals = ([request.form['inquilino_id'], request.form['mes_referencia'],
+                  aluguel, taxa_pintura] + [encargos_vals[e] for e in ENCARGOS] +
+                [total, request.form.get('data_vencimento'), data_pag, status,
+                 request.form.get('observacao'), request.form.get('forma_pagamento')])
+        set_clause = ', '.join(f'{c}=?' for c in cols)
+        conn.execute(f"UPDATE pagamentos SET {set_clause} WHERE id=?", vals + [id])
         conn.commit()
         conn.close()
         flash('Pagamento atualizado!', 'success')

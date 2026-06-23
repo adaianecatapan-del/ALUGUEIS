@@ -1,6 +1,37 @@
 {% extends 'base.html' %}
 {% block title %}{{ 'Editar' if inquilino else 'Novo' }} Inquilino{% endblock %}
 
+{% macro campo_encargo(field, slug, label, anual=True) %}
+<div class="col-12 col-sm-6">
+  <label class="form-label fw-semibold">{{ label }} {% if anual %}<span class="text-muted small fw-normal">(valor total anual)</span>{% endif %}</label>
+  <div class="input-group mb-2">
+    <span class="input-group-text">R$</span>
+    <input type="number" name="{{ field }}" class="form-control" step="0.01" min="0"
+           id="val_{{ slug }}" value="{{ inquilino[field] if inquilino else '0.00' }}"
+           oninput="calcTotal(); previewParcelas('{{ slug }}')">
+  </div>
+  <div class="row g-2 mb-1">
+    <div class="col-6">
+      <label class="form-label small mb-1">Nº de parcelas</label>
+      <select name="{{ field }}_n_parcelas" class="form-select form-select-sm" id="{{ slug }}_n_parcelas" onchange="calcTotal(); previewParcelas('{{ slug }}')">
+        {% for n, lbl in [(1,'1x (cota única)'),(2,'2x'),(3,'3x'),(4,'4x'),(5,'5x'),(6,'6x'),(7,'7x'),(8,'8x'),(9,'9x'),(10,'10x'),(11,'11x'),(12,'12x (mensal)')] %}
+        <option value="{{ n }}" {% if inquilino and (inquilino[field ~ '_n_parcelas'] or 12) == n %}selected{% elif not inquilino and n == 12 %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6">
+      <label class="form-label small mb-1">Mês de início</label>
+      <select name="{{ field }}_mes" class="form-select form-select-sm" id="{{ slug }}_mes" onchange="previewParcelas('{{ slug }}')">
+        {% for m, nome in [(1,'Jan'),(2,'Fev'),(3,'Mar'),(4,'Abr'),(5,'Mai'),(6,'Jun'),(7,'Jul'),(8,'Ago'),(9,'Set'),(10,'Out'),(11,'Nov'),(12,'Dez')] %}
+        <option value="{{ m }}" {% if inquilino and (inquilino[field ~ '_mes'] or 1) == m %}selected{% elif not inquilino and m == 1 %}selected{% endif %}>{{ nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <div id="{{ slug }}_preview" class="small text-muted"></div>
+</div>
+{% endmacro %}
+
 {% block content %}
 <div class="d-flex align-items-center mb-4">
   <a href="{{ url_for('inquilinos') }}" class="btn btn-outline-secondary btn-sm me-3">
@@ -123,65 +154,12 @@
               </div>
             </div>
 
-            <!-- IPTU -->
-            <div class="col-12 col-sm-6">
-              <label class="form-label fw-semibold">IPTU <span class="text-muted small fw-normal">(valor total anual)</span></label>
-              <div class="input-group mb-2">
-                <span class="input-group-text">R$</span>
-                <input type="number" name="iptu" class="form-control" step="0.01" min="0"
-                       id="val_iptu" value="{{ inquilino.iptu if inquilino else '0.00' }}"
-                       oninput="calcTotal(); previewParcelas('iptu')">
-              </div>
-              <div class="row g-2 mb-1">
-                <div class="col-6">
-                  <label class="form-label small mb-1">Nº de parcelas</label>
-                  <select name="iptu_n_parcelas" class="form-select form-select-sm" id="iptu_n_parcelas" onchange="calcTotal(); previewParcelas('iptu')">
-                    {% for n, label in [(1,'1x (cota única)'),(2,'2x'),(3,'3x'),(4,'4x'),(5,'5x'),(6,'6x'),(7,'7x'),(8,'8x'),(9,'9x'),(10,'10x'),(11,'11x'),(12,'12x (mensal)')] %}
-                    <option value="{{ n }}" {% if inquilino and (inquilino.iptu_n_parcelas or 12) == n %}selected{% elif not inquilino and n == 12 %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                <div class="col-6">
-                  <label class="form-label small mb-1">Mês de início</label>
-                  <select name="iptu_mes" class="form-select form-select-sm" id="iptu_mes" onchange="previewParcelas('iptu')">
-                    {% for m, nome in [(1,'Jan'),(2,'Fev'),(3,'Mar'),(4,'Abr'),(5,'Mai'),(6,'Jun'),(7,'Jul'),(8,'Ago'),(9,'Set'),(10,'Out'),(11,'Nov'),(12,'Dez')] %}
-                    <option value="{{ m }}" {% if inquilino and (inquilino.iptu_mes or 1) == m %}selected{% elif not inquilino and m == 1 %}selected{% endif %}>{{ nome }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-              </div>
-              <div id="iptu_preview" class="small text-muted"></div>
-            </div>
-
-            <!-- Taxa de Lixo -->
-            <div class="col-12 col-sm-6">
-              <label class="form-label fw-semibold">Taxa de Coleta de Lixo <span class="text-muted small fw-normal">(valor total anual)</span></label>
-              <div class="input-group mb-2">
-                <span class="input-group-text">R$</span>
-                <input type="number" name="taxa_lixo" class="form-control" step="0.01" min="0"
-                       id="val_lixo" value="{{ inquilino.taxa_lixo if inquilino else '0.00' }}"
-                       oninput="calcTotal(); previewParcelas('lixo')">
-              </div>
-              <div class="row g-2 mb-1">
-                <div class="col-6">
-                  <label class="form-label small mb-1">Nº de parcelas</label>
-                  <select name="taxa_lixo_n_parcelas" class="form-select form-select-sm" id="lixo_n_parcelas" onchange="calcTotal(); previewParcelas('lixo')">
-                    {% for n, label in [(1,'1x (cota única)'),(2,'2x'),(3,'3x'),(4,'4x'),(5,'5x'),(6,'6x'),(7,'7x'),(8,'8x'),(9,'9x'),(10,'10x'),(11,'11x'),(12,'12x (mensal)')] %}
-                    <option value="{{ n }}" {% if inquilino and (inquilino.taxa_lixo_n_parcelas or 12) == n %}selected{% elif not inquilino and n == 12 %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                <div class="col-6">
-                  <label class="form-label small mb-1">Mês de início</label>
-                  <select name="taxa_lixo_mes" class="form-select form-select-sm" id="lixo_mes" onchange="previewParcelas('lixo')">
-                    {% for m, nome in [(1,'Jan'),(2,'Fev'),(3,'Mar'),(4,'Abr'),(5,'Mai'),(6,'Jun'),(7,'Jul'),(8,'Ago'),(9,'Set'),(10,'Out'),(11,'Nov'),(12,'Dez')] %}
-                    <option value="{{ m }}" {% if inquilino and (inquilino.taxa_lixo_mes or 1) == m %}selected{% elif not inquilino and m == 1 %}selected{% endif %}>{{ nome }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-              </div>
-              <div id="lixo_preview" class="small text-muted"></div>
-            </div>
+            {{ campo_encargo('iptu', 'iptu', 'IPTU') }}
+            {{ campo_encargo('taxa_lixo', 'lixo', 'Taxa de Coleta de Lixo') }}
+            {{ campo_encargo('gas', 'gas', 'Consumo de Gás') }}
+            {{ campo_encargo('internet', 'internet', 'Internet') }}
+            {{ campo_encargo('taxa_agua', 'agua', 'Taxa de Água') }}
+            {{ campo_encargo('taxa_administracao', 'administracao', 'Taxa de Administração') }}
 
             <!-- Taxa de Pintura -->
             <div class="col-12 col-sm-6">
@@ -201,7 +179,7 @@
                 <span class="fw-semibold">Total mensal estimado:</span>
                 <span class="fs-5 fw-bold" id="total_mensal">R$ 0,00</span>
               </div>
-              <div class="form-text">Aluguel + parcela de IPTU e Lixo nos meses em que houver cobrança. Pintura é cobrada separadamente (entrada/saída).</div>
+              <div class="form-text">Aluguel + parcela de cada encargo nos meses em que houver cobrança. Pintura é cobrada separadamente (entrada/saída).</div>
             </div>
           </div>
         </div>
@@ -248,18 +226,29 @@
 {% block scripts %}
 <script>
 const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const ENCARGO_SLUGS = ['iptu', 'lixo', 'gas', 'internet', 'agua', 'administracao'];
 
 function calcTotal() {
   const a = parseFloat(document.getElementById('val_aluguel').value) || 0;
-  const i = parseFloat(document.getElementById('val_iptu').value) || 0;
-  const l = parseFloat(document.getElementById('val_lixo').value) || 0;
-  const ni = parseInt(document.getElementById('iptu_n_parcelas').value) || 12;
-  const nl = parseInt(document.getElementById('lixo_n_parcelas').value) || 12;
-  // Valor da parcela em um mês ativo (aluguel + parcela de IPTU/Lixo daquele mês)
-  const iptuParcela = i > 0 ? i / ni : 0;
-  const lixoParcela = l > 0 ? l / nl : 0;
-  const total = a + iptuParcela + lixoParcela;
-  document.getElementById('total_mensal').textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+  let total = a;
+  ENCARGO_SLUGS.forEach(slug => {
+    const v = parseFloat(document.getElementById('val_' + slug).value) || 0;
+    const n = parseInt(document.getElementById(slug + '_n_parcelas').value) || 12;
+    total += v > 0 ? v / n : 0;
+  });
+  document.getElementById('total_mensal').textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function previewParcelas(slug) {
+  const valor = parseFloat(document.getElementById('val_' + slug).value) || 0;
+  const n = parseInt(document.getElementById(slug + '_n_parcelas').value) || 12;
+  const mi = parseInt(document.getElementById(slug + '_mes').value) || 1;
+  const div = document.getElementById(slug + '_preview');
+  if (valor <= 0) { div.innerHTML = ''; return; }
+  const parcVal = (valor / n).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const nomes = [];
+  for (let i = 0; i < n; i++) nomes.push(meses[(mi - 1 + i) % 12]);
+  div.innerHTML = `<span class="badge bg-secondary">${n}x de R$ ${parcVal}</span> <span class="ms-1">${nomes.join(', ')}</span>`;
 }
 
 function buscarIgpm() {
@@ -286,8 +275,8 @@ function buscarIgpm() {
       div.innerHTML = `
         <div class="alert alert-info py-2 mb-2">
           IGPM acumulado (${d.meses} meses): <strong>${d.percentual.toLocaleString('pt-BR')}%</strong><br>
-          Aluguel atual: R$ ${aluguelAtual.toLocaleString('pt-BR', {minimumFractionDigits:2})} →
-          Novo sugerido: <strong>R$ ${novoValor.toLocaleString('pt-BR', {minimumFractionDigits:2})}</strong>
+          Aluguel atual: R$ ${aluguelAtual.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})} →
+          Novo sugerido: <strong>R$ ${novoValor.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong>
         </div>
         <button type="button" class="btn btn-success btn-sm" onclick="aplicarReajuste(${novoValor.toFixed(2)})">
           <i class="bi bi-check-lg me-1"></i>Aplicar este valor ao aluguel
@@ -308,26 +297,13 @@ function aplicarReajuste(novoValor) {
   document.getElementById('igpm_resultado').innerHTML += '<div class="text-success small mt-1"><i class="bi bi-check-circle-fill me-1"></i>Valor aplicado! Clique em Salvar para confirmar.</div>';
 }
 
-function previewParcelas(tipo) {
-  const isIptu = tipo === 'iptu';
-  const valor = parseFloat(document.getElementById(isIptu ? 'val_iptu' : 'val_lixo').value) || 0;
-  const n = parseInt(document.getElementById(isIptu ? 'iptu_n_parcelas' : 'lixo_n_parcelas').value) || 12;
-  const mi = parseInt(document.getElementById(isIptu ? 'iptu_mes' : 'lixo_mes').value) || 1;
-  const div = document.getElementById(isIptu ? 'iptu_preview' : 'lixo_preview');
-  if (valor <= 0) { div.innerHTML = ''; return; }
-  const parcVal = (valor / n).toLocaleString('pt-BR', {minimumFractionDigits: 2});
-  const nomes = [];
-  for (let i = 0; i < n; i++) nomes.push(meses[(mi - 1 + i) % 12]);
-  div.innerHTML = `<span class="badge bg-secondary">${n}x de R$ ${parcVal}</span> <span class="ms-1">${nomes.join(', ')}</span>`;
-}
-
 function calcPintura() {
   const val = parseFloat(document.getElementById('val_pintura').value) || 0;
   const inicio = document.getElementById('data_inicio').value;
   const fim = document.getElementById('data_fim').value;
   const div = document.getElementById('pintura_preview');
   if (val <= 0) { div.innerHTML = ''; return; }
-  const metade = (val / 2).toLocaleString('pt-BR', {minimumFractionDigits: 2});
+  const metade = (val / 2).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   let html = '<div class="mt-1">';
   if (inicio) html += `<span class="badge bg-info text-dark me-1"><i class="bi bi-door-open me-1"></i>Entrada: R$ ${metade} em ${inicio.split('-').reverse().join('/')}</span>`;
   if (fim) html += `<span class="badge bg-warning text-dark"><i class="bi bi-door-closed me-1"></i>Saída: R$ ${metade} em ${fim.split('-').reverse().join('/')}</span>`;
@@ -339,8 +315,7 @@ function calcPintura() {
 document.addEventListener('DOMContentLoaded', function() {
   calcTotal();
   calcPintura();
-  previewParcelas('iptu');
-  previewParcelas('lixo');
+  ENCARGO_SLUGS.forEach(previewParcelas);
 });
 </script>
 {% endblock %}

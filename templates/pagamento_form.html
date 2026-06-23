@@ -1,6 +1,15 @@
 {% extends 'base.html' %}
 {% block title %}{{ 'Editar' if pagamento else 'Novo' }} Pagamento{% endblock %}
 
+{% set encargos = [
+  ('iptu', 'f_iptu', 'IPTU'),
+  ('taxa_lixo', 'f_lixo', 'Taxa de Coleta de Lixo'),
+  ('gas', 'f_gas', 'Consumo de Gás'),
+  ('internet', 'f_internet', 'Internet'),
+  ('taxa_agua', 'f_agua', 'Taxa de Água'),
+  ('taxa_administracao', 'f_administracao', 'Taxa de Administração')
+] %}
+
 {% block content %}
 <div class="d-flex align-items-center mb-4">
   <a href="{{ url_for('pagamentos') }}" class="btn btn-outline-secondary btn-sm me-3">
@@ -65,24 +74,17 @@
                        oninput="calcTotal()">
               </div>
             </div>
+            {% for field, fid, label in encargos %}
             <div class="col-12 col-sm-6">
-              <label class="form-label">IPTU</label>
+              <label class="form-label">{{ label }}</label>
               <div class="input-group">
                 <span class="input-group-text">R$</span>
-                <input type="number" name="iptu" class="form-control" step="0.01" min="0"
-                       id="f_iptu" value="{{ pagamento.iptu if pagamento else '0.00' }}"
+                <input type="number" name="{{ field }}" class="form-control" step="0.01" min="0"
+                       id="{{ fid }}" value="{{ pagamento[field] if pagamento else '0.00' }}"
                        oninput="calcTotal()">
               </div>
             </div>
-            <div class="col-12 col-sm-6">
-              <label class="form-label">Taxa de Coleta de Lixo</label>
-              <div class="input-group">
-                <span class="input-group-text">R$</span>
-                <input type="number" name="taxa_lixo" class="form-control" step="0.01" min="0"
-                       id="f_lixo" value="{{ pagamento.taxa_lixo if pagamento else '0.00' }}"
-                       oninput="calcTotal()">
-              </div>
-            </div>
+            {% endfor %}
           </div>
 
           <div class="alert alert-primary py-2 d-flex justify-content-between align-items-center mb-3">
@@ -137,12 +139,16 @@
 
 {% block scripts %}
 <script>
+const ENCARGO_FIELD_IDS = ['f_iptu', 'f_lixo', 'f_gas', 'f_internet', 'f_agua', 'f_administracao'];
+
 function calcTotal() {
   const a = parseFloat(document.getElementById('f_aluguel').value) || 0;
   const p = parseFloat(document.getElementById('f_pintura').value) || 0;
-  const i = parseFloat(document.getElementById('f_iptu').value) || 0;
-  const l = parseFloat(document.getElementById('f_lixo').value) || 0;
-  document.getElementById('f_total').textContent = 'R$ ' + (a+p+i+l).toLocaleString('pt-BR',{minimumFractionDigits:2});
+  let extras = 0;
+  ENCARGO_FIELD_IDS.forEach(id => {
+    extras += parseFloat(document.getElementById(id).value) || 0;
+  });
+  document.getElementById('f_total').textContent = 'R$ ' + (a + p + extras).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
 function preencherValores() {
@@ -155,6 +161,10 @@ function preencherValores() {
       document.getElementById('f_pintura').value = (d.taxa_pintura || 0).toFixed(2);
       document.getElementById('f_iptu').value = (d.iptu || 0).toFixed(2);
       document.getElementById('f_lixo').value = (d.taxa_lixo || 0).toFixed(2);
+      document.getElementById('f_gas').value = (d.gas || 0).toFixed(2);
+      document.getElementById('f_internet').value = (d.internet || 0).toFixed(2);
+      document.getElementById('f_agua').value = (d.taxa_agua || 0).toFixed(2);
+      document.getElementById('f_administracao').value = (d.taxa_administracao || 0).toFixed(2);
       calcTotal();
     });
 }
