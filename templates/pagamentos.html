@@ -80,82 +80,60 @@
   </div>
 </div>
 
-<div class="card">
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table table-hover mb-0 align-middle">
-        <thead class="table-light">
-          <tr>
-            <th>Inquilino</th>
-            <th class="d-none d-md-table-cell">Referência</th>
-            <th class="d-none d-sm-table-cell">Vencimento</th>
-            <th class="d-none d-lg-table-cell text-end">Composição</th>
-            <th class="text-end">Total</th>
-            <th class="text-center">Status</th>
-            <th class="text-center">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in pagamentos %}
-          <tr>
-            <td>
-              <strong>{{ p.nome }}</strong>
-              <div class="d-md-none text-muted small">{{ p.mes_referencia }}</div>
-              <div class="d-sm-none text-muted small">Vence: {{ p.data_vencimento }}</div>
-            </td>
-            <td class="d-none d-md-table-cell">{{ p.mes_referencia }}</td>
-            <td class="d-none d-sm-table-cell">
-              {{ p.data_vencimento }}
-              {% if p.data_pagamento %}
-              <br><small class="text-success">Pago: {{ p.data_pagamento }}</small>
-              {% endif %}
-            </td>
-            <td class="d-none d-lg-table-cell text-end">
-              <small class="text-muted">
-                {% if p.aluguel > 0 %}Aluguel: R$ {{ "%.2f"|format(p.aluguel) }}<br>{% endif %}
-                {% if p.taxa_pintura > 0 %}
-                  Pintura{% if p.observacao in ['pintura-inicio','pintura-fim'] %} ({{ 'entrada' if p.observacao == 'pintura-inicio' else 'saída' }}){% endif %}: R$ {{ "%.2f"|format(p.taxa_pintura) }}<br>
-                {% endif %}
-                {% if p.iptu > 0 %}IPTU{% if p.iptu_parcela %} {{ p.iptu_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.iptu) }}<br>{% endif %}
-                {% if p.taxa_lixo > 0 %}Lixo{% if p.lixo_parcela %} {{ p.lixo_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.taxa_lixo) }}{% endif %}
-              </small>
-            </td>
-            <td class="text-end fw-bold">R$ {{ "%.2f"|format(p.total) }}</td>
-            <td class="text-center">
-              {% if p.status == 'pago' %}
-                <span class="badge badge-pago">PAGO</span>
-              {% elif p.status == 'atrasado' %}
-                <span class="badge badge-atrasado">ATRASADO</span>
-              {% else %}
-                <span class="badge badge-pendente">PENDENTE</span>
-              {% endif %}
-            </td>
-            <td class="text-center">
-              <div class="d-flex gap-1 justify-content-center flex-wrap">
-                {% if p.status != 'pago' %}
-                <form method="post" action="{{ url_for('pagamento_pagar', id=p.id) }}" class="d-inline">
-                  <input type="hidden" name="data_pagamento" value="{{ hoje }}">
-                  <button class="btn btn-sm btn-success" title="Confirmar pagamento">
-                    <i class="bi bi-check-lg"></i>
-                  </button>
-                </form>
-                {% endif %}
-                <a href="{{ url_for('pagamento_editar', id=p.id) }}" class="btn btn-sm btn-outline-primary" title="Editar">
-                  <i class="bi bi-pencil"></i>
-                </a>
-                <form method="post" action="{{ url_for('pagamento_excluir', id=p.id) }}" onsubmit="return confirm('Excluir este pagamento?')">
-                  <button class="btn btn-sm btn-outline-danger" title="Excluir">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </form>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+<div class="row g-3">
+  {% for p in pagamentos %}
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="card h-100 {% if p.status == 'atrasado' %}border-danger{% elif p.status == 'pendente' %}border-warning{% endif %}" style="border-width:1px">
+      <div class="card-body pb-2">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <h6 class="fw-bold mb-0">{{ p.nome }}</h6>
+            <small class="text-muted">{{ p.mes_referencia }} · Vence {{ p.data_vencimento.split('-')[2] }}/{{ p.data_vencimento.split('-')[1] }}</small>
+          </div>
+          {% if p.status == 'pago' %}
+            <span class="badge badge-pago">PAGO</span>
+          {% elif p.status == 'atrasado' %}
+            <span class="badge badge-atrasado">ATRASADO</span>
+          {% else %}
+            <span class="badge badge-pendente">PENDENTE</span>
+          {% endif %}
+        </div>
+
+        <div class="small text-muted mb-2">
+          {% if p.aluguel > 0 %}<div>Aluguel: R$ {{ "%.2f"|format(p.aluguel) }}</div>{% endif %}
+          {% if p.taxa_pintura > 0 %}
+            <div>Pintura{% if p.observacao in ['pintura-inicio','pintura-fim'] %} ({{ 'entrada' if p.observacao == 'pintura-inicio' else 'saída' }}){% endif %}: R$ {{ "%.2f"|format(p.taxa_pintura) }}</div>
+          {% endif %}
+          {% if p.iptu > 0 %}<div>IPTU{% if p.iptu_parcela %} {{ p.iptu_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.iptu) }}</div>{% endif %}
+          {% if p.taxa_lixo > 0 %}<div>Lixo{% if p.lixo_parcela %} {{ p.lixo_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.taxa_lixo) }}</div>{% endif %}
+          {% if p.data_pagamento %}<div class="text-success">Pago em {{ p.data_pagamento.split('-')[2] }}/{{ p.data_pagamento.split('-')[1] }}/{{ p.data_pagamento.split('-')[0] }}</div>{% endif %}
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fs-4 fw-bold">R$ {{ "%.2f"|format(p.total) }}</span>
+        </div>
+      </div>
+      <div class="card-footer bg-transparent border-0 pt-0 d-flex gap-2">
+        {% if p.status != 'pago' %}
+        <form method="post" action="{{ url_for('pagamento_pagar', id=p.id) }}" class="flex-fill">
+          <input type="hidden" name="data_pagamento" value="{{ hoje }}">
+          <button class="btn btn-success w-100">
+            <i class="bi bi-check-lg me-1"></i>Marcar Pago
+          </button>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('pagamento_editar', id=p.id) }}" class="btn btn-outline-primary {% if p.status == 'pago' %}flex-fill{% endif %}">
+          <i class="bi bi-pencil me-1"></i>{% if p.status == 'pago' %}Editar{% endif %}
+        </a>
+        <form method="post" action="{{ url_for('pagamento_excluir', id=p.id) }}" onsubmit="return confirm('Excluir este pagamento?')">
+          <button class="btn btn-outline-danger">
+            <i class="bi bi-trash"></i>
+          </button>
+        </form>
+      </div>
     </div>
   </div>
+  {% endfor %}
 </div>
 {% else %}
 <div class="card">
