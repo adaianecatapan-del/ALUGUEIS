@@ -25,24 +25,24 @@
           <div class="mb-3">
             <label class="form-label fw-semibold">Complemento</label>
             <input type="text" name="complemento" class="form-control"
-                   value="{{ imovel.complemento if imovel }}" placeholder="Apto, sala...">
+                   value="{{ imovel.complemento or '' if imovel else '' }}" placeholder="Apto, sala...">
           </div>
           <div class="row g-3 mb-3">
             <div class="col-6">
               <label class="form-label fw-semibold">Bairro</label>
               <input type="text" name="bairro" class="form-control"
-                     value="{{ imovel.bairro if imovel }}">
+                     value="{{ imovel.bairro or '' if imovel else '' }}">
             </div>
             <div class="col-6">
               <label class="form-label fw-semibold">Cidade</label>
               <input type="text" name="cidade" class="form-control"
-                     value="{{ imovel.cidade if imovel }}">
+                     value="{{ imovel.cidade or '' if imovel else '' }}">
             </div>
           </div>
           <div class="mb-4">
             <label class="form-label fw-semibold">Descrição</label>
             <textarea name="descricao" class="form-control" rows="3"
-                      placeholder="Observações sobre o imóvel...">{{ imovel.descricao if imovel }}</textarea>
+                      placeholder="Observações sobre o imóvel...">{{ imovel.descricao or '' if imovel else '' }}</textarea>
           </div>
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary flex-fill">

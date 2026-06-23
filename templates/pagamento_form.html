@@ -39,7 +39,7 @@
             <div class="col-12 col-sm-6">
               <label class="form-label fw-semibold">Data de vencimento</label>
               <input type="date" name="data_vencimento" class="form-control"
-                     value="{{ pagamento.data_vencimento if pagamento }}">
+                     value="{{ pagamento.data_vencimento or '' if pagamento else '' }}">
             </div>
           </div>
 
@@ -105,12 +105,21 @@
               <input type="date" name="data_pagamento" class="form-control"
                      value="{{ pagamento.data_pagamento if pagamento.data_pagamento }}">
             </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label fw-semibold">Forma de pagamento</label>
+              <select name="forma_pagamento" class="form-select">
+                <option value="">— Não informado —</option>
+                {% for opt in ['Pix','Dinheiro','Transferência','Cartão','Boleto','Outro'] %}
+                <option value="{{ opt }}" {% if pagamento.forma_pagamento == opt %}selected{% endif %}>{{ opt }}</option>
+                {% endfor %}
+              </select>
+            </div>
           </div>
           {% endif %}
 
           <div class="mb-4">
             <label class="form-label fw-semibold">Observação</label>
-            <textarea name="observacao" class="form-control" rows="2">{{ pagamento.observacao if pagamento }}</textarea>
+            <textarea name="observacao" class="form-control" rows="2">{{ pagamento.observacao or '' if pagamento else '' }}</textarea>
           </div>
 
           <div class="d-flex gap-2">

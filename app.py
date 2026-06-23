@@ -1,10 +1,17 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
+from werkzeug.utils import secure_filename
 from database import get_db, init_db, migrate_db, atualizar_status_pagamentos
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import calendar
+import os
+import json
+import urllib.request
 
 app = Flask(__name__)
 app.secret_key = 'alugueis-secret-2024'
+
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 @app.context_processor
@@ -48,6 +55,16 @@ def _criar_pintura_payments(conn, inq_id, taxa_pintura, data_inicio, data_fim):
                  data_vencimento, status, observacao)
                 VALUES (?,?,?,?,?,?,?)
             ''', (inq_id, data[:7], metade, metade, data, status, obs))
+
+
+def _salvar_contrato(inq_id):
+    file = request.files.get('contrato_arquivo')
+    if file and file.filename:
+        ext = os.path.splitext(file.filename)[1]
+        filename = secure_filename(f"contrato_{inq_id}{ext}")
+        file.save(os.path.join(UPLOAD_FOLDER, filename))
+        return filename
+    return None
 
 
 # ─── DASHBOARD ────────────────────────────────────────────────────────────────
@@ -97,6 +114,16 @@ def index():
         LIMIT 5
     ''').fetchall()
 
+    em_60_dias = (hoje + timedelta(days=60)).isoformat()
+    contratos_vencendo = conn.execute('''
+        SELECT i.*, im.endereco
+        FROM inquilinos i
+        LEFT JOIN imoveis im ON i.imovel_id = im.id
+        WHERE i.ativo = 1 AND i.data_fim IS NOT NULL AND i.data_fim != ''
+              AND i.data_fim <= ?
+        ORDER BY i.data_fim
+    ''', (em_60_dias,)).fetchall()
+
     conn.close()
     return render_template('index.html',
         total_imoveis=total_imoveis,
@@ -105,7 +132,8 @@ def index():
         valor_pendente=valor_pendente,
         alertas=alertas,
         atrasados=atrasados,
-        ultimos_pagos=ultimos_pagos
+        ultimos_pagos=ultimos_pagos,
+        contratos_vencendo=contratos_vencendo
     )
 
 
@@ -198,8 +226,8 @@ def inquilino_novo():
             (nome, cpf, telefone, email, imovel_id, data_inicio, data_fim,
              aluguel, taxa_pintura, iptu, taxa_lixo, dia_vencimento,
              iptu_tipo, iptu_mes, taxa_lixo_tipo, taxa_lixo_mes,
-             iptu_n_parcelas, taxa_lixo_n_parcelas, observacao)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             iptu_n_parcelas, taxa_lixo_n_parcelas, data_ultimo_reajuste, observacao)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ''', (
             request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
             request.form.get('email'), request.form.get('imovel_id') or None,
@@ -215,9 +243,13 @@ def inquilino_novo():
             int(request.form.get('taxa_lixo_mes') or 1),
             int(request.form.get('iptu_n_parcelas') or 12),
             int(request.form.get('taxa_lixo_n_parcelas') or 12),
+            data_inicio,
             request.form.get('observacao')
         ))
         inq_id = cursor.lastrowid
+        contrato_arquivo = _salvar_contrato(inq_id)
+        if contrato_arquivo:
+            conn.execute('UPDATE inquilinos SET contrato_arquivo=? WHERE id=?', (contrato_arquivo, inq_id))
         _criar_pintura_payments(conn, inq_id, taxa_pintura, data_inicio, data_fim)
         conn.commit()
         conn.close()
@@ -236,16 +268,21 @@ def inquilino_editar(id):
         data_inicio = request.form.get('data_inicio') or None
         data_fim = request.form.get('data_fim') or None
         taxa_pintura = float(request.form.get('taxa_pintura') or 0)
+        novo_aluguel = float(request.form.get('aluguel') or 0)
+        data_ultimo_reajuste = inquilino['data_ultimo_reajuste'] or data_inicio
+        if request.form.get('aplicar_reajuste') == '1':
+            data_ultimo_reajuste = date.today().isoformat()
         conn.execute('''
             UPDATE inquilinos SET nome=?, cpf=?, telefone=?, email=?, imovel_id=?,
             data_inicio=?, data_fim=?, aluguel=?, taxa_pintura=?, iptu=?, taxa_lixo=?,
             dia_vencimento=?, iptu_tipo=?, iptu_mes=?, taxa_lixo_tipo=?, taxa_lixo_mes=?,
-            iptu_n_parcelas=?, taxa_lixo_n_parcelas=?, ativo=?, observacao=? WHERE id=?
+            iptu_n_parcelas=?, taxa_lixo_n_parcelas=?, data_ultimo_reajuste=?,
+            ativo=?, observacao=? WHERE id=?
         ''', (
             request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
             request.form.get('email'), request.form.get('imovel_id') or None,
             data_inicio, data_fim,
-            float(request.form.get('aluguel') or 0),
+            novo_aluguel,
             taxa_pintura,
             float(request.form.get('iptu') or 0),
             float(request.form.get('taxa_lixo') or 0),
@@ -256,9 +293,13 @@ def inquilino_editar(id):
             int(request.form.get('taxa_lixo_mes') or 1),
             int(request.form.get('iptu_n_parcelas') or 12),
             int(request.form.get('taxa_lixo_n_parcelas') or 12),
+            data_ultimo_reajuste,
             1 if request.form.get('ativo') else 0,
             request.form.get('observacao'), id
         ))
+        contrato_arquivo = _salvar_contrato(id)
+        if contrato_arquivo:
+            conn.execute('UPDATE inquilinos SET contrato_arquivo=? WHERE id=?', (contrato_arquivo, id))
         _criar_pintura_payments(conn, id, taxa_pintura, data_inicio, data_fim)
         conn.commit()
         conn.close()
@@ -266,6 +307,11 @@ def inquilino_editar(id):
         return redirect(url_for('inquilinos'))
     conn.close()
     return render_template('inquilino_form.html', inquilino=inquilino, imoveis=imoveis)
+
+
+@app.route('/contratos/<filename>')
+def contrato_download(filename):
+    return send_from_directory(UPLOAD_FOLDER, secure_filename(filename))
 
 
 @app.route('/inquilinos/<int:id>/excluir', methods=['POST'])
@@ -405,12 +451,12 @@ def pagamento_novo():
         conn.execute('''
             INSERT INTO pagamentos
             (inquilino_id, mes_referencia, aluguel, taxa_pintura, iptu, taxa_lixo,
-             total, data_vencimento, status, observacao)
-            VALUES (?,?,?,?,?,?,?,?,?,?)
+             total, data_vencimento, status, observacao, forma_pagamento)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
         ''', (
             request.form['inquilino_id'], request.form['mes_referencia'],
             aluguel, taxa_pintura, iptu, taxa_lixo, total, data_venc,
-            status, request.form.get('observacao')
+            status, request.form.get('observacao'), request.form.get('forma_pagamento')
         ))
         conn.commit()
         conn.close()
@@ -425,10 +471,11 @@ def pagamento_novo():
 @app.route('/pagamentos/<int:id>/pagar', methods=['POST'])
 def pagamento_pagar(id):
     data_pag = request.form.get('data_pagamento') or date.today().isoformat()
+    forma_pagamento = request.form.get('forma_pagamento') or None
     conn = get_db()
     conn.execute(
-        "UPDATE pagamentos SET status='pago', data_pagamento=? WHERE id=?",
-        (data_pag, id)
+        "UPDATE pagamentos SET status='pago', data_pagamento=?, forma_pagamento=? WHERE id=?",
+        (data_pag, forma_pagamento, id)
     )
     conn.commit()
     conn.close()
@@ -454,12 +501,12 @@ def pagamento_editar(id):
         conn.execute('''
             UPDATE pagamentos SET inquilino_id=?, mes_referencia=?, aluguel=?,
             taxa_pintura=?, iptu=?, taxa_lixo=?, total=?, data_vencimento=?,
-            data_pagamento=?, status=?, observacao=? WHERE id=?
+            data_pagamento=?, status=?, observacao=?, forma_pagamento=? WHERE id=?
         ''', (
             request.form['inquilino_id'], request.form['mes_referencia'],
             aluguel, taxa_pintura, iptu, taxa_lixo, total,
             request.form.get('data_vencimento'), data_pag, status,
-            request.form.get('observacao'), id
+            request.form.get('observacao'), request.form.get('forma_pagamento'), id
         ))
         conn.commit()
         conn.close()
@@ -528,6 +575,33 @@ def relatorios():
 
 
 # ─── API para preencher valores do inquilino ──────────────────────────────────
+
+@app.route('/api/igpm')
+def api_igpm():
+    data_inicio_str = request.args.get('data_inicio')
+    try:
+        if data_inicio_str:
+            d_ini = datetime.strptime(data_inicio_str, '%Y-%m-%d').date()
+        else:
+            d_ini = date.today().replace(year=date.today().year - 1)
+        d_fim = date.today()
+        url = (
+            'https://api.bcb.gov.br/dados/serie/bcdata.sgs.189/dados'
+            f"?formato=json&dataInicial={d_ini.strftime('%d/%m/%Y')}&dataFinal={d_fim.strftime('%d/%m/%Y')}"
+        )
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            dados = json.loads(resp.read().decode('utf-8'))
+        if not dados:
+            return jsonify({'ok': False, 'erro': 'Sem dados retornados para o período.'})
+        acumulado = 1.0
+        for item in dados:
+            valor = float(str(item['valor']).replace(',', '.'))
+            acumulado *= (1 + valor / 100)
+        percentual = (acumulado - 1) * 100
+        return jsonify({'ok': True, 'percentual': round(percentual, 2), 'meses': len(dados)})
+    except Exception as e:
+        return jsonify({'ok': False, 'erro': str(e)})
+
 
 @app.route('/api/inquilino/<int:id>')
 def api_inquilino(id):

@@ -14,7 +14,7 @@
 
 <div class="row justify-content-center">
   <div class="col-12 col-lg-8">
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
       <!-- Dados pessoais -->
       <div class="card mb-3">
         <div class="card-header fw-semibold bg-light border-0">
@@ -30,17 +30,17 @@
             <div class="col-12 col-md-4">
               <label class="form-label fw-semibold">CPF</label>
               <input type="text" name="cpf" class="form-control"
-                     value="{{ inquilino.cpf if inquilino }}" placeholder="000.000.000-00">
+                     value="{{ inquilino.cpf or '' if inquilino else '' }}" placeholder="000.000.000-00">
             </div>
             <div class="col-12 col-md-6">
               <label class="form-label fw-semibold">Telefone</label>
               <input type="text" name="telefone" class="form-control"
-                     value="{{ inquilino.telefone if inquilino }}" placeholder="(00) 00000-0000">
+                     value="{{ inquilino.telefone or '' if inquilino else '' }}" placeholder="(00) 00000-0000">
             </div>
             <div class="col-12 col-md-6">
               <label class="form-label fw-semibold">E-mail</label>
               <input type="email" name="email" class="form-control"
-                     value="{{ inquilino.email if inquilino }}">
+                     value="{{ inquilino.email or '' if inquilino else '' }}">
             </div>
           </div>
         </div>
@@ -68,12 +68,12 @@
             <div class="col-12 col-md-4">
               <label class="form-label fw-semibold">Início do contrato</label>
               <input type="date" name="data_inicio" class="form-control" id="data_inicio"
-                     value="{{ inquilino.data_inicio if inquilino }}" oninput="calcPintura()">
+                     value="{{ inquilino.data_inicio or '' if inquilino else '' }}" oninput="calcPintura()">
             </div>
             <div class="col-12 col-md-4">
               <label class="form-label fw-semibold">Fim do contrato</label>
               <input type="date" name="data_fim" class="form-control" id="data_fim"
-                     value="{{ inquilino.data_fim if inquilino }}" oninput="calcPintura()">
+                     value="{{ inquilino.data_fim or '' if inquilino else '' }}" oninput="calcPintura()">
             </div>
             <div class="col-12 col-md-4">
               <label class="form-label fw-semibold">Dia de vencimento</label>
@@ -89,6 +89,17 @@
               </div>
             </div>
             {% endif %}
+            <div class="col-12">
+              <label class="form-label fw-semibold">Anexar contrato (PDF ou imagem)</label>
+              <input type="file" name="contrato_arquivo" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+              {% if inquilino and inquilino.contrato_arquivo %}
+              <div class="form-text">
+                <i class="bi bi-paperclip"></i>
+                Arquivo atual: <a href="{{ url_for('contrato_download', filename=inquilino.contrato_arquivo) }}" target="_blank">{{ inquilino.contrato_arquivo }}</a>
+                — selecione outro arquivo acima para substituir.
+              </div>
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>
@@ -190,17 +201,36 @@
                 <span class="fw-semibold">Total mensal estimado:</span>
                 <span class="fs-5 fw-bold" id="total_mensal">R$ 0,00</span>
               </div>
-              <div class="form-text">Aluguel + valores mensais (IPTU e Lixo quando mensais). Pintura é cobrada separadamente.</div>
+              <div class="form-text">Aluguel + parcela de IPTU e Lixo nos meses em que houver cobrança. Pintura é cobrada separadamente (entrada/saída).</div>
             </div>
           </div>
         </div>
       </div>
 
+      {% if inquilino %}
+      <!-- Reajuste de Aluguel -->
+      <div class="card mb-3">
+        <div class="card-header fw-semibold bg-light border-0">
+          <i class="bi bi-graph-up-arrow me-2"></i>Reajuste de Aluguel (IGPM)
+        </div>
+        <div class="card-body">
+          <p class="small text-muted mb-2">
+            Último reajuste: <strong>{{ (inquilino.data_ultimo_reajuste or inquilino.data_inicio or 'não informado') }}</strong>
+          </p>
+          <button type="button" class="btn btn-outline-primary btn-sm" id="btn_buscar_igpm" onclick="buscarIgpm()">
+            <i class="bi bi-search me-1"></i>Buscar IGPM acumulado
+          </button>
+          <div id="igpm_resultado" class="mt-3"></div>
+          <input type="hidden" name="aplicar_reajuste" id="aplicar_reajuste" value="0">
+        </div>
+      </div>
+      {% endif %}
+
       <!-- Observações -->
       <div class="card mb-4">
         <div class="card-body">
           <label class="form-label fw-semibold">Observações</label>
-          <textarea name="observacao" class="form-control" rows="2">{{ inquilino.observacao if inquilino }}</textarea>
+          <textarea name="observacao" class="form-control" rows="2">{{ inquilino.observacao or '' if inquilino else '' }}</textarea>
         </div>
       </div>
 
@@ -225,11 +255,57 @@ function calcTotal() {
   const l = parseFloat(document.getElementById('val_lixo').value) || 0;
   const ni = parseInt(document.getElementById('iptu_n_parcelas').value) || 12;
   const nl = parseInt(document.getElementById('lixo_n_parcelas').value) || 12;
-  // Parcela mensal estimada (se todos os meses tivessem parcela)
-  const iptuMensal = ni === 12 ? i / 12 : 0;
-  const lixoMensal = nl === 12 ? l / 12 : 0;
-  const total = a + iptuMensal + lixoMensal;
+  // Valor da parcela em um mês ativo (aluguel + parcela de IPTU/Lixo daquele mês)
+  const iptuParcela = i > 0 ? i / ni : 0;
+  const lixoParcela = l > 0 ? l / nl : 0;
+  const total = a + iptuParcela + lixoParcela;
   document.getElementById('total_mensal').textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+}
+
+function buscarIgpm() {
+  const dataInicio = document.getElementById('data_inicio').value;
+  const btn = document.getElementById('btn_buscar_igpm');
+  const div = document.getElementById('igpm_resultado');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Buscando...';
+  const params = dataInicio ? `?data_inicio=${dataInicio}` : '';
+  fetch('/api/igpm' + params)
+    .then(r => r.json())
+    .then(d => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-search me-1"></i>Buscar IGPM acumulado';
+      if (!d.ok) {
+        div.innerHTML = `<div class="alert alert-warning py-2 small mb-0">
+          Não foi possível buscar automaticamente (${d.erro}).
+          Informe o reajuste manualmente atualizando o campo Aluguel acima.
+        </div>`;
+        return;
+      }
+      const aluguelAtual = parseFloat(document.getElementById('val_aluguel').value) || 0;
+      const novoValor = aluguelAtual * (1 + d.percentual / 100);
+      div.innerHTML = `
+        <div class="alert alert-info py-2 mb-2">
+          IGPM acumulado (${d.meses} meses): <strong>${d.percentual.toLocaleString('pt-BR')}%</strong><br>
+          Aluguel atual: R$ ${aluguelAtual.toLocaleString('pt-BR', {minimumFractionDigits:2})} →
+          Novo sugerido: <strong>R$ ${novoValor.toLocaleString('pt-BR', {minimumFractionDigits:2})}</strong>
+        </div>
+        <button type="button" class="btn btn-success btn-sm" onclick="aplicarReajuste(${novoValor.toFixed(2)})">
+          <i class="bi bi-check-lg me-1"></i>Aplicar este valor ao aluguel
+        </button>
+      `;
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-search me-1"></i>Buscar IGPM acumulado';
+      div.innerHTML = `<div class="alert alert-warning py-2 small mb-0">Erro ao buscar: ${err}</div>`;
+    });
+}
+
+function aplicarReajuste(novoValor) {
+  document.getElementById('val_aluguel').value = novoValor.toFixed(2);
+  document.getElementById('aplicar_reajuste').value = '1';
+  calcTotal();
+  document.getElementById('igpm_resultado').innerHTML += '<div class="text-success small mt-1"><i class="bi bi-check-circle-fill me-1"></i>Valor aplicado! Clique em Salvar para confirmar.</div>';
 }
 
 function previewParcelas(tipo) {

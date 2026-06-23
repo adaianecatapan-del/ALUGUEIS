@@ -106,22 +106,38 @@
           {% endif %}
           {% if p.iptu > 0 %}<div>IPTU{% if p.iptu_parcela %} {{ p.iptu_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.iptu) }}</div>{% endif %}
           {% if p.taxa_lixo > 0 %}<div>Lixo{% if p.lixo_parcela %} {{ p.lixo_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.taxa_lixo) }}</div>{% endif %}
-          {% if p.data_pagamento %}<div class="text-success">Pago em {{ p.data_pagamento.split('-')[2] }}/{{ p.data_pagamento.split('-')[1] }}/{{ p.data_pagamento.split('-')[0] }}</div>{% endif %}
+          {% if p.data_pagamento %}
+            <div class="text-success">
+              Pago em {{ p.data_pagamento.split('-')[2] }}/{{ p.data_pagamento.split('-')[1] }}/{{ p.data_pagamento.split('-')[0] }}
+              {% if p.forma_pagamento %} via {{ p.forma_pagamento }}{% endif %}
+            </div>
+          {% endif %}
         </div>
 
         <div class="d-flex justify-content-between align-items-center">
           <span class="fs-4 fw-bold">R$ {{ "%.2f"|format(p.total) }}</span>
         </div>
       </div>
-      <div class="card-footer bg-transparent border-0 pt-0 d-flex gap-2">
+      <div class="card-footer bg-transparent border-0 pt-0">
         {% if p.status != 'pago' %}
-        <form method="post" action="{{ url_for('pagamento_pagar', id=p.id) }}" class="flex-fill">
+        <form method="post" action="{{ url_for('pagamento_pagar', id=p.id) }}" class="mb-2">
           <input type="hidden" name="data_pagamento" value="{{ hoje }}">
-          <button class="btn btn-success w-100">
-            <i class="bi bi-check-lg me-1"></i>Marcar Pago
-          </button>
+          <div class="d-flex gap-2">
+            <select name="forma_pagamento" class="form-select form-select-sm" style="max-width:140px">
+              <option value="Pix">Pix</option>
+              <option value="Dinheiro">Dinheiro</option>
+              <option value="Transferência">Transferência</option>
+              <option value="Cartão">Cartão</option>
+              <option value="Boleto">Boleto</option>
+              <option value="Outro">Outro</option>
+            </select>
+            <button class="btn btn-success flex-fill">
+              <i class="bi bi-check-lg me-1"></i>Marcar Pago
+            </button>
+          </div>
         </form>
         {% endif %}
+        <div class="d-flex gap-2">
         <a href="{{ url_for('pagamento_editar', id=p.id) }}" class="btn btn-outline-primary {% if p.status == 'pago' %}flex-fill{% endif %}">
           <i class="bi bi-pencil me-1"></i>{% if p.status == 'pago' %}Editar{% endif %}
         </a>
@@ -130,6 +146,7 @@
             <i class="bi bi-trash"></i>
           </button>
         </form>
+        </div>
       </div>
     </div>
   </div>
