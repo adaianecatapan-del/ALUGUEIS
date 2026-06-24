@@ -211,6 +211,8 @@
             <th class="text-center">Qtd.</th>
             <th class="text-end">Cobrado</th>
             <th class="text-end">Recebido</th>
+            <th class="text-end">Aluguel</th>
+            <th class="text-end">Outras Taxas</th>
             <th class="text-end">Líquido</th>
             <th class="text-end">Pendente</th>
             <th class="text-center">Detalhar</th>
@@ -224,6 +226,8 @@
             <td class="text-center">{{ r.qtd }}</td>
             <td class="text-end">R$ {{ "%.2f"|format(r.total_cobrado) }}</td>
             <td class="text-end text-success">R$ {{ "%.2f"|format(r.total_pago) }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(r.aluguel_pago) }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(r.outras_taxas_pago) }}</td>
             <td class="text-end text-success fw-bold">R$ {{ "%.2f"|format(r.total_liquido) }}</td>
             <td class="text-end {% if r.total_pendente > 0 %}text-danger{% endif %}">R$ {{ "%.2f"|format(r.total_pendente) }}</td>
             <td class="text-center">

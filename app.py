@@ -587,6 +587,8 @@ def relatorios():
                COUNT(p.id) as qtd,
                SUM(p.total) as total_cobrado,
                SUM(CASE WHEN p.status='pago' THEN p.total ELSE 0 END) as total_pago,
+               SUM(CASE WHEN p.status='pago' THEN p.aluguel ELSE 0 END) as aluguel_pago,
+               SUM(CASE WHEN p.status='pago' THEN (p.total - p.aluguel) ELSE 0 END) as outras_taxas_pago,
                SUM(CASE WHEN p.status='pago' THEN COALESCE(p.valor_liquido, p.total) ELSE 0 END) as total_liquido,
                SUM(CASE WHEN p.status IN ('pendente','atrasado') THEN p.total ELSE 0 END) as total_pendente
         FROM pagamentos p
