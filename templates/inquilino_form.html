@@ -154,6 +154,18 @@
               </div>
             </div>
 
+            <!-- Taxa de administração da imobiliária (desconto sobre o líquido) -->
+            <div class="col-12 col-sm-6">
+              <label class="form-label fw-semibold">Taxa de Administração da Imobiliária <span class="text-muted small fw-normal">(% retido, não cobrado do inquilino)</span></label>
+              <div class="input-group">
+                <input type="number" name="taxa_administracao_pct" class="form-control" step="0.01" min="0" max="100"
+                       id="val_admin_pct" value="{{ inquilino.taxa_administracao_pct if inquilino else '0.00' }}"
+                       oninput="calcTotal()">
+                <span class="input-group-text">%</span>
+              </div>
+              <div class="form-text">O inquilino paga o aluguel normalmente; esse % é retido pela imobiliária antes de repassar a você.</div>
+            </div>
+
             {{ campo_encargo('iptu', 'iptu', 'IPTU') }}
             {{ campo_encargo('taxa_lixo', 'lixo', 'Taxa de Coleta de Lixo') }}
             {{ campo_encargo('gas', 'gas', 'Consumo de Gás') }}
@@ -176,8 +188,12 @@
             <!-- Total mensal -->
             <div class="col-12">
               <div class="alert alert-primary mb-0 d-flex justify-content-between align-items-center py-2">
-                <span class="fw-semibold">Total mensal estimado:</span>
+                <span class="fw-semibold">Total mensal estimado (cobrado do inquilino):</span>
                 <span class="fs-5 fw-bold" id="total_mensal">R$ 0,00</span>
+              </div>
+              <div id="liquido_div" class="alert alert-success mb-0 mt-2 d-flex justify-content-between align-items-center py-2 d-none">
+                <span class="fw-semibold">Você recebe líquido (após taxa da imobiliária):</span>
+                <span class="fs-5 fw-bold" id="total_liquido">R$ 0,00</span>
               </div>
               <div class="form-text">Aluguel + parcela de cada encargo nos meses em que houver cobrança. Pintura é cobrada separadamente (entrada/saída).</div>
             </div>
@@ -237,6 +253,16 @@ function calcTotal() {
     total += v > 0 ? v / n : 0;
   });
   document.getElementById('total_mensal').textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+  const adminPct = parseFloat(document.getElementById('val_admin_pct').value) || 0;
+  const liquidoDiv = document.getElementById('liquido_div');
+  if (adminPct > 0) {
+    const liquido = total - (a * adminPct / 100);
+    document.getElementById('total_liquido').textContent = 'R$ ' + liquido.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    liquidoDiv.classList.remove('d-none');
+  } else {
+    liquidoDiv.classList.add('d-none');
+  }
 }
 
 function previewParcelas(slug) {

@@ -88,6 +88,7 @@ def migrate_db():
         ('taxa_administracao', 'REAL DEFAULT 0'),
         ('taxa_administracao_n_parcelas', 'INTEGER DEFAULT 12'),
         ('taxa_administracao_mes', 'INTEGER DEFAULT 1'),
+        ('taxa_administracao_pct', 'REAL DEFAULT 0'),
     ]:
         try:
             conn.execute(f'ALTER TABLE inquilinos ADD COLUMN {col} {defn}')
@@ -105,6 +106,7 @@ def migrate_db():
         ('taxa_agua_parcela', 'TEXT'),
         ('taxa_administracao', 'REAL DEFAULT 0'),
         ('taxa_administracao_parcela', 'TEXT'),
+        ('valor_liquido', 'REAL'),
     ]:
         try:
             conn.execute(f'ALTER TABLE pagamentos ADD COLUMN {col} {defn}')
