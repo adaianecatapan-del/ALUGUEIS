@@ -252,14 +252,15 @@ def inquilino_novo():
 
         cols = (['nome', 'cpf', 'telefone', 'email', 'imovel_id', 'data_inicio', 'data_fim',
                   'aluguel', 'taxa_pintura', 'dia_vencimento'] +
-                _encargo_cols() + ['taxa_administracao_pct', 'data_ultimo_reajuste', 'observacao'])
+                _encargo_cols() +
+                ['taxa_administracao_valor_fixo', 'data_ultimo_reajuste', 'observacao'])
         vals = ([request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
                   request.form.get('email'), request.form.get('imovel_id') or None,
                   data_inicio, data_fim,
                   float(request.form.get('aluguel') or 0), taxa_pintura,
                   int(request.form.get('dia_vencimento') or 5)] +
                 _encargo_form_values() +
-                [float(request.form.get('taxa_administracao_pct') or 0),
+                [float(request.form.get('taxa_administracao_valor_fixo') or 0),
                  data_inicio, request.form.get('observacao')])
         placeholders = ','.join(['?'] * len(cols))
         cursor = conn.execute(
@@ -295,13 +296,13 @@ def inquilino_editar(id):
         cols = (['nome', 'cpf', 'telefone', 'email', 'imovel_id', 'data_inicio', 'data_fim',
                   'aluguel', 'taxa_pintura', 'dia_vencimento'] +
                 _encargo_cols() +
-                ['taxa_administracao_pct', 'data_ultimo_reajuste', 'ativo', 'observacao'])
+                ['taxa_administracao_valor_fixo', 'data_ultimo_reajuste', 'ativo', 'observacao'])
         vals = ([request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
                   request.form.get('email'), request.form.get('imovel_id') or None,
                   data_inicio, data_fim, novo_aluguel, taxa_pintura,
                   int(request.form.get('dia_vencimento') or 5)] +
                 _encargo_form_values() +
-                [float(request.form.get('taxa_administracao_pct') or 0),
+                [float(request.form.get('taxa_administracao_valor_fixo') or 0),
                  data_ultimo_reajuste, 1 if request.form.get('ativo') else 0,
                  request.form.get('observacao')])
         set_clause = ', '.join(f'{c}=?' for c in cols)
@@ -417,7 +418,7 @@ def pagamento_gerar():
                     pag_cols += [e, PARCELA_COL[e]]
                     pag_vals += [val, parcela]
 
-                desconto_admin = round((inq['aluguel'] or 0) * (inq['taxa_administracao_pct'] or 0) / 100, 2)
+                desconto_admin = inq['taxa_administracao_valor_fixo'] or 0
                 valor_liquido = total - desconto_admin
 
                 status = 'atrasado' if data_venc < date.today().isoformat() else 'pendente'

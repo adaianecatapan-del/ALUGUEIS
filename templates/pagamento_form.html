@@ -184,9 +184,7 @@ function preencherValores() {
       document.getElementById('f_internet').value = (d.internet || 0).toFixed(2);
       document.getElementById('f_agua').value = (d.taxa_agua || 0).toFixed(2);
       document.getElementById('f_administracao').value = (d.taxa_administracao || 0).toFixed(2);
-      const pct = d.taxa_administracao_pct || 0;
-      const sugestao = (d.aluguel || 0) * pct / 100;
-      document.getElementById('f_desconto_admin').value = sugestao.toFixed(2);
+      document.getElementById('f_desconto_admin').value = (d.taxa_administracao_valor_fixo || 0).toFixed(2);
       calcTotal();
     });
 }
