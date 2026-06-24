@@ -118,6 +118,33 @@
   </div>
   {% endif %}
 
+  <!-- Saldos anteriores -->
+  {% if saldos_anteriores %}
+  <div class="col-12 col-lg-6">
+    <div class="card">
+      <div class="card-header bg-danger bg-opacity-10 border-0">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-exclamation-circle-fill text-danger me-2"></i>Débitos Anteriores</h6>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for s in saldos_anteriores %}
+          <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+            <div>
+              <strong>{{ s.nome }}</strong>
+              <br><small class="text-muted">{{ s.endereco or '—' }}{% if s.saldo_anterior_obs %} · {{ s.saldo_anterior_obs }}{% endif %}</small>
+            </div>
+            <div class="text-end">
+              <a href="{{ url_for('inquilino_editar', id=s.id) }}" class="small">editar</a>
+              <br><span class="text-danger fw-bold">R$ {{ "%.2f"|format(s.saldo_anterior) }}</span>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Contratos vencendo -->
   {% if contratos_vencendo %}
   <div class="col-12 col-lg-6">

@@ -90,6 +90,8 @@ def migrate_db():
         ('taxa_administracao_mes', 'INTEGER DEFAULT 1'),
         ('taxa_administracao_pct', 'REAL DEFAULT 0'),
         ('taxa_administracao_valor_fixo', 'REAL DEFAULT 0'),
+        ('saldo_anterior', 'REAL DEFAULT 0'),
+        ('saldo_anterior_obs', 'TEXT'),
     ]:
         try:
             conn.execute(f'ALTER TABLE inquilinos ADD COLUMN {col} {defn}')

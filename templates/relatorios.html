@@ -215,6 +215,8 @@
             <th class="text-end">Outras Taxas</th>
             <th class="text-end">Líquido</th>
             <th class="text-end">Pendente</th>
+            <th class="text-end">Saldo Anterior</th>
+            <th class="text-end">Total Devido</th>
             <th class="text-center">Último Pagamento</th>
             <th class="text-center">Detalhar</th>
           </tr>
@@ -231,6 +233,8 @@
             <td class="text-end">R$ {{ "%.2f"|format(r.outras_taxas_pago) }}</td>
             <td class="text-end text-success fw-bold">R$ {{ "%.2f"|format(r.total_liquido) }}</td>
             <td class="text-end {% if r.total_pendente > 0 %}text-danger{% endif %}">R$ {{ "%.2f"|format(r.total_pendente) }}</td>
+            <td class="text-end {% if r.saldo_anterior > 0 %}text-danger fw-bold{% endif %}">{{ "R$ %.2f"|format(r.saldo_anterior) if r.saldo_anterior else '—' }}</td>
+            <td class="text-end fw-bold {% if r.total_devido > 0 %}text-danger{% endif %}">R$ {{ "%.2f"|format(r.total_devido) }}</td>
             <td class="text-center small">
               {% if r.ultimo_pagamento %}
                 {{ r.ultimo_pagamento.split('-')[2] }}/{{ r.ultimo_pagamento.split('-')[1] }}/{{ r.ultimo_pagamento.split('-')[0] }}

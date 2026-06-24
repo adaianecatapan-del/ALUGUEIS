@@ -152,6 +152,14 @@ def index():
         ORDER BY i.data_fim
     ''', (em_60_dias,)).fetchall()
 
+    saldos_anteriores = conn.execute('''
+        SELECT i.*, im.endereco
+        FROM inquilinos i
+        LEFT JOIN imoveis im ON i.imovel_id = im.id
+        WHERE i.saldo_anterior > 0
+        ORDER BY i.saldo_anterior DESC
+    ''').fetchall()
+
     conn.close()
     return render_template('index.html',
         total_imoveis=total_imoveis,
@@ -161,7 +169,8 @@ def index():
         alertas=alertas,
         atrasados=atrasados,
         ultimos_pagos=ultimos_pagos,
-        contratos_vencendo=contratos_vencendo
+        contratos_vencendo=contratos_vencendo,
+        saldos_anteriores=saldos_anteriores
     )
 
 
@@ -253,7 +262,8 @@ def inquilino_novo():
         cols = (['nome', 'cpf', 'telefone', 'email', 'imovel_id', 'data_inicio', 'data_fim',
                   'aluguel', 'taxa_pintura', 'dia_vencimento'] +
                 _encargo_cols() +
-                ['taxa_administracao_valor_fixo', 'data_ultimo_reajuste', 'observacao'])
+                ['taxa_administracao_valor_fixo', 'saldo_anterior', 'saldo_anterior_obs',
+                 'data_ultimo_reajuste', 'observacao'])
         vals = ([request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
                   request.form.get('email'), request.form.get('imovel_id') or None,
                   data_inicio, data_fim,
@@ -261,6 +271,8 @@ def inquilino_novo():
                   int(request.form.get('dia_vencimento') or 5)] +
                 _encargo_form_values() +
                 [float(request.form.get('taxa_administracao_valor_fixo') or 0),
+                 float(request.form.get('saldo_anterior') or 0),
+                 request.form.get('saldo_anterior_obs'),
                  data_inicio, request.form.get('observacao')])
         placeholders = ','.join(['?'] * len(cols))
         cursor = conn.execute(
@@ -296,13 +308,16 @@ def inquilino_editar(id):
         cols = (['nome', 'cpf', 'telefone', 'email', 'imovel_id', 'data_inicio', 'data_fim',
                   'aluguel', 'taxa_pintura', 'dia_vencimento'] +
                 _encargo_cols() +
-                ['taxa_administracao_valor_fixo', 'data_ultimo_reajuste', 'ativo', 'observacao'])
+                ['taxa_administracao_valor_fixo', 'saldo_anterior', 'saldo_anterior_obs',
+                 'data_ultimo_reajuste', 'ativo', 'observacao'])
         vals = ([request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
                   request.form.get('email'), request.form.get('imovel_id') or None,
                   data_inicio, data_fim, novo_aluguel, taxa_pintura,
                   int(request.form.get('dia_vencimento') or 5)] +
                 _encargo_form_values() +
                 [float(request.form.get('taxa_administracao_valor_fixo') or 0),
+                 float(request.form.get('saldo_anterior') or 0),
+                 request.form.get('saldo_anterior_obs'),
                  data_ultimo_reajuste, 1 if request.form.get('ativo') else 0,
                  request.form.get('observacao')])
         set_clause = ', '.join(f'{c}=?' for c in cols)
@@ -583,20 +598,21 @@ def relatorios():
     todos_inquilinos = conn.execute('SELECT id, nome FROM inquilinos ORDER BY nome').fetchall()
 
     resumo_por_inquilino = conn.execute('''
-        SELECT i.id, i.nome, im.endereco,
+        SELECT i.id, i.nome, im.endereco, i.saldo_anterior,
                COUNT(p.id) as qtd,
-               SUM(p.total) as total_cobrado,
-               SUM(CASE WHEN p.status='pago' THEN p.total ELSE 0 END) as total_pago,
-               SUM(CASE WHEN p.status='pago' THEN p.aluguel ELSE 0 END) as aluguel_pago,
-               SUM(CASE WHEN p.status='pago' THEN (p.total - p.aluguel) ELSE 0 END) as outras_taxas_pago,
-               SUM(CASE WHEN p.status='pago' THEN COALESCE(p.valor_liquido, p.total) ELSE 0 END) as total_liquido,
-               SUM(CASE WHEN p.status IN ('pendente','atrasado') THEN p.total ELSE 0 END) as total_pendente,
+               COALESCE(SUM(p.total), 0) as total_cobrado,
+               COALESCE(SUM(CASE WHEN p.status='pago' THEN p.total ELSE 0 END), 0) as total_pago,
+               COALESCE(SUM(CASE WHEN p.status='pago' THEN p.aluguel ELSE 0 END), 0) as aluguel_pago,
+               COALESCE(SUM(CASE WHEN p.status='pago' THEN (p.total - p.aluguel) ELSE 0 END), 0) as outras_taxas_pago,
+               COALESCE(SUM(CASE WHEN p.status='pago' THEN COALESCE(p.valor_liquido, p.total) ELSE 0 END), 0) as total_liquido,
+               COALESCE(SUM(CASE WHEN p.status IN ('pendente','atrasado') THEN p.total ELSE 0 END), 0) as total_pendente,
+               (COALESCE(SUM(CASE WHEN p.status IN ('pendente','atrasado') THEN p.total ELSE 0 END), 0) + i.saldo_anterior) as total_devido,
                MAX(CASE WHEN p.status='pago' THEN p.data_pagamento ELSE NULL END) as ultimo_pagamento
-        FROM pagamentos p
-        JOIN inquilinos i ON p.inquilino_id = i.id
+        FROM inquilinos i
         LEFT JOIN imoveis im ON i.imovel_id = im.id
-        WHERE p.mes_referencia LIKE ?
+        LEFT JOIN pagamentos p ON p.inquilino_id = i.id AND p.mes_referencia LIKE ?
         GROUP BY i.id
+        HAVING qtd > 0 OR i.saldo_anterior > 0
         ORDER BY i.nome
     ''', (f'{ano}%',)).fetchall()
 
