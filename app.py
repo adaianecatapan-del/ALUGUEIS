@@ -607,7 +607,8 @@ def relatorios():
         detalhe_pagamentos = conn.execute('''
             SELECT *,
                    COALESCE(valor_liquido, total) as valor_liquido_calc,
-                   COALESCE(desconto_administracao, 0) as desconto_administracao_calc
+                   COALESCE(desconto_administracao, 0) as desconto_administracao_calc,
+                   (total - aluguel) as outras_taxas
             FROM pagamentos
             WHERE inquilino_id=? AND mes_referencia LIKE ?
             ORDER BY mes_referencia

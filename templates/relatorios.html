@@ -61,10 +61,12 @@
             <th class="text-end">Internet</th>
             <th class="text-end">Água</th>
             <th class="text-end">Pintura</th>
+            <th class="text-end">Outras Taxas</th>
             <th class="text-end">Total</th>
             <th class="text-end">Desc. Admin.</th>
             <th class="text-end">Líquido</th>
             <th class="text-center">Status</th>
+            <th class="text-center">Pago em</th>
           </tr>
         </thead>
         <tbody>
@@ -78,6 +80,7 @@
             <td class="text-end">{{ "R$ %.2f"|format(p.internet) if p.internet else '—' }}</td>
             <td class="text-end">{{ "R$ %.2f"|format(p.taxa_agua) if p.taxa_agua else '—' }}</td>
             <td class="text-end">{{ "R$ %.2f"|format(p.taxa_pintura) if p.taxa_pintura else '—' }}</td>
+            <td class="text-end fw-semibold">{{ "R$ %.2f"|format(p.outras_taxas) if p.outras_taxas else '—' }}</td>
             <td class="text-end fw-bold">R$ {{ "%.2f"|format(p.total) }}</td>
             <td class="text-end text-danger">{{ "-R$ %.2f"|format(p.desconto_administracao_calc) if p.desconto_administracao_calc else '—' }}</td>
             <td class="text-end text-success fw-bold">R$ {{ "%.2f"|format(p.valor_liquido_calc) }}</td>
@@ -85,6 +88,12 @@
               {% if p.status == 'pago' %}<span class="badge badge-pago">PAGO</span>
               {% elif p.status == 'atrasado' %}<span class="badge badge-atrasado">ATRASADO</span>
               {% else %}<span class="badge badge-pendente">PENDENTE</span>{% endif %}
+            </td>
+            <td class="text-center small">
+              {% if p.data_pagamento %}
+                {{ p.data_pagamento.split('-')[2] }}/{{ p.data_pagamento.split('-')[1] }}/{{ p.data_pagamento.split('-')[0] }}
+                {% if p.forma_pagamento %}<br><span class="text-muted">{{ p.forma_pagamento }}</span>{% endif %}
+              {% else %}—{% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -99,9 +108,11 @@
             <td class="text-end">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='internet')) }}</td>
             <td class="text-end">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='taxa_agua')) }}</td>
             <td class="text-end">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='taxa_pintura')) }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='outras_taxas')) }}</td>
             <td class="text-end">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='total')) }}</td>
             <td class="text-end text-danger">-R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='desconto_administracao_calc')) }}</td>
             <td class="text-end text-success">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='valor_liquido_calc')) }}</td>
+            <td></td>
             <td></td>
           </tr>
         </tfoot>
