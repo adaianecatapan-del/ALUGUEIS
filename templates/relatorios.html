@@ -42,6 +42,8 @@
             <th class="text-center text-success">Pagos</th>
             <th class="text-center text-warning">Pendentes</th>
             <th class="text-center text-danger">Atrasados</th>
+            <th class="text-end">Aluguel Recebido</th>
+            <th class="text-end">Outras Taxas Recebidas</th>
             <th class="text-end">Arrecadado</th>
             <th class="text-end">Previsto</th>
           </tr>
@@ -60,6 +62,8 @@
             <td class="text-center">
               <span class="badge bg-danger">{{ r.atrasados }}</span>
             </td>
+            <td class="text-end">R$ {{ "%.2f"|format(r.aluguel_pago) }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(r.encargos_pago) }}</td>
             <td class="text-end text-success fw-bold">R$ {{ "%.2f"|format(r.valor_pago) }}</td>
             <td class="text-end text-muted">R$ {{ "%.2f"|format(r.valor_total) }}</td>
           </tr>
@@ -72,6 +76,8 @@
             <td class="text-center">{{ resumo_mensal | sum(attribute='pagos') }}</td>
             <td class="text-center">{{ resumo_mensal | sum(attribute='pendentes') }}</td>
             <td class="text-center">{{ resumo_mensal | sum(attribute='atrasados') }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(resumo_mensal | sum(attribute='aluguel_pago')) }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(resumo_mensal | sum(attribute='encargos_pago')) }}</td>
             <td class="text-end text-success">R$ {{ "%.2f"|format(resumo_mensal | sum(attribute='valor_pago')) }}</td>
             <td class="text-end">R$ {{ "%.2f"|format(resumo_mensal | sum(attribute='valor_total')) }}</td>
           </tr>

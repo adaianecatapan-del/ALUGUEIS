@@ -560,7 +560,9 @@ def relatorios():
                SUM(CASE WHEN status='atrasado' THEN 1 ELSE 0 END) as atrasados,
                SUM(CASE WHEN status='pendente' THEN 1 ELSE 0 END) as pendentes,
                SUM(total) as valor_total,
-               SUM(CASE WHEN status='pago' THEN total ELSE 0 END) as valor_pago
+               SUM(CASE WHEN status='pago' THEN total ELSE 0 END) as valor_pago,
+               SUM(CASE WHEN status='pago' THEN aluguel ELSE 0 END) as aluguel_pago,
+               SUM(CASE WHEN status='pago' THEN (total - aluguel) ELSE 0 END) as encargos_pago
         FROM pagamentos
         WHERE mes_referencia LIKE ?
         GROUP BY mes_referencia
