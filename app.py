@@ -545,6 +545,7 @@ def pagamento_excluir(id):
 @app.route('/relatorios')
 def relatorios():
     ano = request.args.get('ano', date.today().year)
+    filtro_inquilino = request.args.get('inquilino_id', '')
     conn = get_db()
 
     resumo_mensal = conn.execute('''
@@ -579,12 +580,50 @@ def relatorios():
         "SELECT DISTINCT substr(mes_referencia,1,4) as ano FROM pagamentos ORDER BY ano DESC"
     ).fetchall()
 
+    todos_inquilinos = conn.execute('SELECT id, nome FROM inquilinos ORDER BY nome').fetchall()
+
+    resumo_por_inquilino = conn.execute('''
+        SELECT i.id, i.nome, im.endereco,
+               COUNT(p.id) as qtd,
+               SUM(p.total) as total_cobrado,
+               SUM(CASE WHEN p.status='pago' THEN p.total ELSE 0 END) as total_pago,
+               SUM(CASE WHEN p.status='pago' THEN COALESCE(p.valor_liquido, p.total) ELSE 0 END) as total_liquido,
+               SUM(CASE WHEN p.status IN ('pendente','atrasado') THEN p.total ELSE 0 END) as total_pendente
+        FROM pagamentos p
+        JOIN inquilinos i ON p.inquilino_id = i.id
+        LEFT JOIN imoveis im ON i.imovel_id = im.id
+        WHERE p.mes_referencia LIKE ?
+        GROUP BY i.id
+        ORDER BY i.nome
+    ''', (f'{ano}%',)).fetchall()
+
+    detalhe_inquilino = None
+    detalhe_pagamentos = []
+    if filtro_inquilino:
+        detalhe_inquilino = conn.execute(
+            'SELECT i.*, im.endereco FROM inquilinos i LEFT JOIN imoveis im ON i.imovel_id=im.id WHERE i.id=?',
+            (filtro_inquilino,)
+        ).fetchone()
+        detalhe_pagamentos = conn.execute('''
+            SELECT *,
+                   COALESCE(valor_liquido, total) as valor_liquido_calc,
+                   COALESCE(desconto_administracao, 0) as desconto_administracao_calc
+            FROM pagamentos
+            WHERE inquilino_id=? AND mes_referencia LIKE ?
+            ORDER BY mes_referencia
+        ''', (filtro_inquilino, f'{ano}%')).fetchall()
+
     conn.close()
     return render_template('relatorios.html',
         resumo_mensal=resumo_mensal,
         inadimplentes=inadimplentes,
         anos_disponiveis=[r['ano'] for r in anos_disponiveis],
-        ano_selecionado=str(ano)
+        ano_selecionado=str(ano),
+        todos_inquilinos=todos_inquilinos,
+        filtro_inquilino=filtro_inquilino,
+        resumo_por_inquilino=resumo_por_inquilino,
+        detalhe_inquilino=detalhe_inquilino,
+        detalhe_pagamentos=detalhe_pagamentos
     )
 
 

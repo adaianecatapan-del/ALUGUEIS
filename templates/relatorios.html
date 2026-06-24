@@ -6,13 +6,13 @@
   <h4 class="fw-bold mb-0"><i class="bi bi-bar-chart me-2 text-primary"></i>Relatórios</h4>
 </div>
 
-<!-- Filtro de ano -->
+<!-- Filtro de ano e inquilino -->
 <div class="card mb-4">
   <div class="card-body py-3">
-    <form method="get" class="d-flex gap-2 align-items-end">
+    <form method="get" class="d-flex gap-2 align-items-end flex-wrap">
       <div>
         <label class="form-label small fw-semibold mb-1">Ano</label>
-        <select name="ano" class="form-select form-select-sm" onchange="this.form.submit()">
+        <select name="ano" class="form-select form-select-sm">
           {% for a in anos_disponiveis %}
           <option value="{{ a }}" {% if a == ano_selecionado %}selected{% endif %}>{{ a }}</option>
           {% endfor %}
@@ -21,10 +21,101 @@
           {% endif %}
         </select>
       </div>
+      <div>
+        <label class="form-label small fw-semibold mb-1">Inquilino (detalhado)</label>
+        <select name="inquilino_id" class="form-select form-select-sm">
+          <option value="">— Todos (visão geral) —</option>
+          {% for i in todos_inquilinos %}
+          <option value="{{ i.id }}" {% if filtro_inquilino == i.id|string %}selected{% endif %}>{{ i.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <button type="submit" class="btn btn-sm btn-primary">Ver</button>
+      {% if filtro_inquilino %}
+      <a href="{{ url_for('relatorios', ano=ano_selecionado) }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-x-lg me-1"></i>Limpar inquilino
+      </a>
+      {% endif %}
     </form>
   </div>
 </div>
+
+<!-- Detalhamento por inquilino -->
+{% if filtro_inquilino and detalhe_inquilino %}
+<div class="card mb-4">
+  <div class="card-header fw-semibold border-0 bg-primary bg-opacity-10">
+    <i class="bi bi-person-lines-fill me-2"></i>Detalhamento — {{ detalhe_inquilino.nome }}
+    <span class="text-muted small">({{ detalhe_inquilino.endereco or 'sem imóvel' }})</span>
+  </div>
+  <div class="card-body p-0">
+    {% if detalhe_pagamentos %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Mês</th>
+            <th class="text-end">Aluguel</th>
+            <th class="text-end">IPTU</th>
+            <th class="text-end">Lixo</th>
+            <th class="text-end">Gás</th>
+            <th class="text-end">Internet</th>
+            <th class="text-end">Água</th>
+            <th class="text-end">Pintura</th>
+            <th class="text-end">Total</th>
+            <th class="text-end">Desc. Admin.</th>
+            <th class="text-end">Líquido</th>
+            <th class="text-center">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in detalhe_pagamentos %}
+          <tr>
+            <td><strong>{{ p.mes_referencia }}</strong></td>
+            <td class="text-end">R$ {{ "%.2f"|format(p.aluguel) }}</td>
+            <td class="text-end">{{ "R$ %.2f"|format(p.iptu) if p.iptu else '—' }}</td>
+            <td class="text-end">{{ "R$ %.2f"|format(p.taxa_lixo) if p.taxa_lixo else '—' }}</td>
+            <td class="text-end">{{ "R$ %.2f"|format(p.gas) if p.gas else '—' }}</td>
+            <td class="text-end">{{ "R$ %.2f"|format(p.internet) if p.internet else '—' }}</td>
+            <td class="text-end">{{ "R$ %.2f"|format(p.taxa_agua) if p.taxa_agua else '—' }}</td>
+            <td class="text-end">{{ "R$ %.2f"|format(p.taxa_pintura) if p.taxa_pintura else '—' }}</td>
+            <td class="text-end fw-bold">R$ {{ "%.2f"|format(p.total) }}</td>
+            <td class="text-end text-danger">{{ "-R$ %.2f"|format(p.desconto_administracao_calc) if p.desconto_administracao_calc else '—' }}</td>
+            <td class="text-end text-success fw-bold">R$ {{ "%.2f"|format(p.valor_liquido_calc) }}</td>
+            <td class="text-center">
+              {% if p.status == 'pago' %}<span class="badge badge-pago">PAGO</span>
+              {% elif p.status == 'atrasado' %}<span class="badge badge-atrasado">ATRASADO</span>
+              {% else %}<span class="badge badge-pendente">PENDENTE</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light fw-bold">
+          <tr>
+            <td>TOTAL</td>
+            <td class="text-end">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='aluguel')) }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='iptu')) }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='taxa_lixo')) }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='gas')) }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='internet')) }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='taxa_agua')) }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='taxa_pintura')) }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='total')) }}</td>
+            <td class="text-end text-danger">-R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='desconto_administracao_calc')) }}</td>
+            <td class="text-end text-success">R$ {{ "%.2f"|format(detalhe_pagamentos | sum(attribute='valor_liquido_calc')) }}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-inbox fs-1 mb-3"></i>
+      <p>Nenhum pagamento de {{ detalhe_inquilino.nome }} em {{ ano_selecionado }}.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 
 <!-- Resumo anual -->
 <div class="card mb-4">
@@ -82,6 +173,56 @@
             <td class="text-end">R$ {{ "%.2f"|format(resumo_mensal | sum(attribute='valor_total')) }}</td>
           </tr>
         </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-inbox fs-1 mb-3"></i>
+      <p>Sem dados para {{ ano_selecionado }}.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Resumo por Inquilino -->
+<div class="card mb-4">
+  <div class="card-header fw-semibold border-0 bg-light">
+    <i class="bi bi-people me-2"></i>Resumo por Inquilino — {{ ano_selecionado }}
+  </div>
+  <div class="card-body p-0">
+    {% if resumo_por_inquilino %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Inquilino</th>
+            <th class="d-none d-md-table-cell">Imóvel</th>
+            <th class="text-center">Qtd.</th>
+            <th class="text-end">Cobrado</th>
+            <th class="text-end">Recebido</th>
+            <th class="text-end">Líquido</th>
+            <th class="text-end">Pendente</th>
+            <th class="text-center">Detalhar</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in resumo_por_inquilino %}
+          <tr>
+            <td><strong>{{ r.nome }}</strong></td>
+            <td class="d-none d-md-table-cell"><small>{{ r.endereco or '—' }}</small></td>
+            <td class="text-center">{{ r.qtd }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(r.total_cobrado) }}</td>
+            <td class="text-end text-success">R$ {{ "%.2f"|format(r.total_pago) }}</td>
+            <td class="text-end text-success fw-bold">R$ {{ "%.2f"|format(r.total_liquido) }}</td>
+            <td class="text-end {% if r.total_pendente > 0 %}text-danger{% endif %}">R$ {{ "%.2f"|format(r.total_pendente) }}</td>
+            <td class="text-center">
+              <a href="{{ url_for('relatorios', ano=ano_selecionado, inquilino_id=r.id) }}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-search"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
       </table>
     </div>
     {% else %}
