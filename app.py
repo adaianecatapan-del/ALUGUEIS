@@ -228,6 +228,7 @@ def imovel_editar(id):
 @app.route('/imoveis/<int:id>/excluir', methods=['POST'])
 def imovel_excluir(id):
     conn = get_db()
+    conn.execute('UPDATE inquilinos SET imovel_id=NULL WHERE imovel_id=?', (id,))
     conn.execute('DELETE FROM imoveis WHERE id=?', (id,))
     conn.commit()
     conn.close()
@@ -342,6 +343,7 @@ def contrato_download(filename):
 @app.route('/inquilinos/<int:id>/excluir', methods=['POST'])
 def inquilino_excluir(id):
     conn = get_db()
+    conn.execute('DELETE FROM pagamentos WHERE inquilino_id=?', (id,))
     conn.execute('DELETE FROM inquilinos WHERE id=?', (id,))
     conn.commit()
     conn.close()
