@@ -421,8 +421,8 @@ def pagamento_gerar():
                 valor_liquido = total - desconto_admin
 
                 status = 'atrasado' if data_venc < date.today().isoformat() else 'pendente'
-                pag_cols += ['total', 'status', 'valor_liquido']
-                pag_vals += [total, status, valor_liquido]
+                pag_cols += ['total', 'status', 'valor_liquido', 'desconto_administracao']
+                pag_vals += [total, status, valor_liquido, desconto_admin]
                 placeholders = ','.join(['?'] * len(pag_cols))
                 conn.execute(
                     f"INSERT INTO pagamentos ({','.join(pag_cols)}) VALUES ({placeholders})",
@@ -454,20 +454,16 @@ def pagamento_novo():
         data_venc = request.form.get('data_vencimento')
         status = 'atrasado' if data_venc and data_venc < date.today().isoformat() else 'pendente'
 
-        inq = conn.execute(
-            'SELECT taxa_administracao_pct FROM inquilinos WHERE id=?',
-            (request.form['inquilino_id'],)
-        ).fetchone()
-        desconto_admin = round(aluguel * ((inq['taxa_administracao_pct'] if inq else 0) or 0) / 100, 2)
+        desconto_admin = float(request.form.get('desconto_administracao') or 0)
         valor_liquido = total - desconto_admin
 
         cols = (['inquilino_id', 'mes_referencia', 'aluguel', 'taxa_pintura'] + ENCARGOS +
-                ['total', 'valor_liquido', 'data_vencimento', 'status', 'observacao',
-                 'forma_pagamento'])
+                ['total', 'valor_liquido', 'desconto_administracao', 'data_vencimento',
+                 'status', 'observacao', 'forma_pagamento'])
         vals = ([request.form['inquilino_id'], request.form['mes_referencia'],
                   aluguel, taxa_pintura] + [encargos_vals[e] for e in ENCARGOS] +
-                [total, valor_liquido, data_venc, status, request.form.get('observacao'),
-                 request.form.get('forma_pagamento')])
+                [total, valor_liquido, desconto_admin, data_venc, status,
+                 request.form.get('observacao'), request.form.get('forma_pagamento')])
         placeholders = ','.join(['?'] * len(cols))
         conn.execute(f"INSERT INTO pagamentos ({','.join(cols)}) VALUES ({placeholders})", vals)
         conn.commit()
@@ -510,20 +506,17 @@ def pagamento_editar(id):
         data_pag = request.form.get('data_pagamento') or None
         status = request.form.get('status', 'pendente')
 
-        inq = conn.execute(
-            'SELECT taxa_administracao_pct FROM inquilinos WHERE id=?',
-            (request.form['inquilino_id'],)
-        ).fetchone()
-        desconto_admin = round(aluguel * ((inq['taxa_administracao_pct'] if inq else 0) or 0) / 100, 2)
+        desconto_admin = float(request.form.get('desconto_administracao') or 0)
         valor_liquido = total - desconto_admin
 
         cols = (['inquilino_id', 'mes_referencia', 'aluguel', 'taxa_pintura'] + ENCARGOS +
-                ['total', 'valor_liquido', 'data_vencimento', 'data_pagamento', 'status',
-                 'observacao', 'forma_pagamento'])
+                ['total', 'valor_liquido', 'desconto_administracao', 'data_vencimento',
+                 'data_pagamento', 'status', 'observacao', 'forma_pagamento'])
         vals = ([request.form['inquilino_id'], request.form['mes_referencia'],
                   aluguel, taxa_pintura] + [encargos_vals[e] for e in ENCARGOS] +
-                [total, valor_liquido, request.form.get('data_vencimento'), data_pag, status,
-                 request.form.get('observacao'), request.form.get('forma_pagamento')])
+                [total, valor_liquido, desconto_admin, request.form.get('data_vencimento'),
+                 data_pag, status, request.form.get('observacao'),
+                 request.form.get('forma_pagamento')])
         set_clause = ', '.join(f'{c}=?' for c in cols)
         conn.execute(f"UPDATE pagamentos SET {set_clause} WHERE id=?", vals + [id])
         conn.commit()

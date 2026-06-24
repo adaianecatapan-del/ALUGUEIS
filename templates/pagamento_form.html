@@ -88,8 +88,23 @@
           </div>
 
           <div class="alert alert-primary py-2 d-flex justify-content-between align-items-center mb-3">
-            <span class="fw-semibold">Total:</span>
+            <span class="fw-semibold">Total cobrado do inquilino:</span>
             <span class="fs-5 fw-bold" id="f_total">R$ 0,00</span>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Desconto da Administração <span class="text-muted small fw-normal">(R$ retido pela imobiliária, não cobrado do inquilino)</span></label>
+            <div class="input-group">
+              <span class="input-group-text">R$</span>
+              <input type="number" name="desconto_administracao" class="form-control" step="0.01" min="0"
+                     id="f_desconto_admin" value="{{ pagamento.desconto_administracao if pagamento else '0.00' }}"
+                     oninput="calcTotal()">
+            </div>
+          </div>
+
+          <div class="alert alert-success py-2 d-flex justify-content-between align-items-center mb-3">
+            <span class="fw-semibold">Você recebe líquido:</span>
+            <span class="fs-5 fw-bold" id="f_liquido">R$ 0,00</span>
           </div>
 
           {% if pagamento %}
@@ -148,7 +163,11 @@ function calcTotal() {
   ENCARGO_FIELD_IDS.forEach(id => {
     extras += parseFloat(document.getElementById(id).value) || 0;
   });
-  document.getElementById('f_total').textContent = 'R$ ' + (a + p + extras).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  const total = a + p + extras;
+  document.getElementById('f_total').textContent = 'R$ ' + total.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+
+  const desconto = parseFloat(document.getElementById('f_desconto_admin').value) || 0;
+  document.getElementById('f_liquido').textContent = 'R$ ' + (total - desconto).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
 function preencherValores() {
@@ -165,6 +184,9 @@ function preencherValores() {
       document.getElementById('f_internet').value = (d.internet || 0).toFixed(2);
       document.getElementById('f_agua').value = (d.taxa_agua || 0).toFixed(2);
       document.getElementById('f_administracao').value = (d.taxa_administracao || 0).toFixed(2);
+      const pct = d.taxa_administracao_pct || 0;
+      const sugestao = (d.aluguel || 0) * pct / 100;
+      document.getElementById('f_desconto_admin').value = sugestao.toFixed(2);
       calcTotal();
     });
 }

@@ -107,6 +107,7 @@ def migrate_db():
         ('taxa_administracao', 'REAL DEFAULT 0'),
         ('taxa_administracao_parcela', 'TEXT'),
         ('valor_liquido', 'REAL'),
+        ('desconto_administracao', 'REAL DEFAULT 0'),
     ]:
         try:
             conn.execute(f'ALTER TABLE pagamentos ADD COLUMN {col} {defn}')
