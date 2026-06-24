@@ -113,9 +113,7 @@ def index():
     ).fetchone()[0]
 
     hoje = date.today()
-    em_7_dias = (hoje.replace(day=hoje.day + 7) if hoje.day <= 24
-                 else date(hoje.year if hoje.month < 12 else hoje.year + 1,
-                           hoje.month + 1 if hoje.month < 12 else 1, 7)).isoformat()
+    em_7_dias = (hoje + timedelta(days=7)).isoformat()
 
     alertas = conn.execute('''
         SELECT p.*, i.nome, im.endereco
