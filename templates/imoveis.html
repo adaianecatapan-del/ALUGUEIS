@@ -21,7 +21,7 @@
             {{ im.total_inquilinos }} inquilino{{ 's' if im.total_inquilinos != 1 }}
           </span>
         </div>
-        {% if im.complemento %}<p class="text-muted small mb-1">{{ im.complemento }}</p>{% endif %}
+        {% if im.complemento %}<p class="text-primary fw-semibold mb-1">{{ im.complemento }}</p>{% endif %}
         {% if im.bairro or im.cidade %}
         <p class="text-muted small mb-1">
           {% if im.bairro %}{{ im.bairro }}{% endif %}
