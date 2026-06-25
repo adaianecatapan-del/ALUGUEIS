@@ -116,13 +116,6 @@ def migrate_db():
             conn.execute(f'ALTER TABLE pagamentos ADD COLUMN {col} {defn}')
         except Exception:
             pass
-    for col, defn in [
-        ('nome', 'TEXT'),
-    ]:
-        try:
-            conn.execute(f'ALTER TABLE imoveis ADD COLUMN {col} {defn}')
-        except Exception:
-            pass
     conn.commit()
     conn.close()
 

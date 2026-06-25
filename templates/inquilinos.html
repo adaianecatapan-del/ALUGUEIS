@@ -30,10 +30,10 @@
             <td>
               <strong>{{ i.nome }}</strong>
               {% if i.email %}<br><small class="text-muted">{{ i.email }}</small>{% endif %}
-              <div class="d-md-none text-muted small mt-1">{{ i.imovel_nome or i.imovel_endereco or '—' }}</div>
+              <div class="d-md-none text-muted small mt-1">{{ i.imovel_endereco or '—' }}</div>
             </td>
             <td class="d-none d-md-table-cell">
-              <small>{{ i.imovel_nome or i.imovel_endereco or '—' }}</small>
+              <small>{{ i.imovel_endereco or '—' }}</small>
             </td>
             <td class="d-none d-sm-table-cell">{{ i.telefone or '—' }}</td>
             <td class="text-end">
