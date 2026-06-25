@@ -45,7 +45,7 @@
 <div class="card mb-4">
   <div class="card-header fw-semibold border-0 bg-primary bg-opacity-10">
     <i class="bi bi-person-lines-fill me-2"></i>Detalhamento — {{ detalhe_inquilino.nome }}
-    <span class="text-muted small">({{ detalhe_inquilino.endereco or 'sem imóvel' }})</span>
+    <span class="text-muted small">({{ detalhe_inquilino.imovel_nome or detalhe_inquilino.endereco or 'sem imóvel' }})</span>
   </div>
   <div class="card-body p-0">
     {% if detalhe_pagamentos %}
@@ -225,7 +225,7 @@
           {% for r in resumo_por_inquilino %}
           <tr>
             <td><strong>{{ r.nome }}</strong></td>
-            <td class="d-none d-md-table-cell"><small>{{ r.endereco or '—' }}</small></td>
+            <td class="d-none d-md-table-cell"><small>{{ r.imovel_nome or r.endereco or '—' }}</small></td>
             <td class="text-center">{{ r.qtd }}</td>
             <td class="text-end">R$ {{ "%.2f"|format(r.total_cobrado) }}</td>
             <td class="text-end text-success">R$ {{ "%.2f"|format(r.total_pago) }}</td>
@@ -281,7 +281,7 @@
           {% for i in inadimplentes %}
           <tr>
             <td><strong>{{ i.nome }}</strong></td>
-            <td class="d-none d-md-table-cell"><small>{{ i.endereco }}</small></td>
+            <td class="d-none d-md-table-cell"><small>{{ i.imovel_nome or i.endereco }}</small></td>
             <td class="d-none d-sm-table-cell">{{ i.telefone or '—' }}</td>
             <td class="text-center"><span class="badge bg-danger">{{ i.qtd_atraso }}</span></td>
             <td class="text-end text-danger fw-bold">R$ {{ "%.2f"|format(i.valor_total) }}</td>

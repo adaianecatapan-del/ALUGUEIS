@@ -116,7 +116,7 @@ def index():
     em_7_dias = (hoje + timedelta(days=7)).isoformat()
 
     alertas = conn.execute('''
-        SELECT p.*, i.nome, im.endereco
+        SELECT p.*, i.nome, im.nome as imovel_nome, im.endereco
         FROM pagamentos p
         JOIN inquilinos i ON p.inquilino_id = i.id
         JOIN imoveis im ON i.imovel_id = im.id
@@ -125,7 +125,7 @@ def index():
     ''', (em_7_dias,)).fetchall()
 
     atrasados = conn.execute('''
-        SELECT p.*, i.nome, im.endereco
+        SELECT p.*, i.nome, im.nome as imovel_nome, im.endereco
         FROM pagamentos p
         JOIN inquilinos i ON p.inquilino_id = i.id
         JOIN imoveis im ON i.imovel_id = im.id
@@ -144,7 +144,7 @@ def index():
 
     em_60_dias = (hoje + timedelta(days=60)).isoformat()
     contratos_vencendo = conn.execute('''
-        SELECT i.*, im.endereco
+        SELECT i.*, im.nome as imovel_nome, im.endereco
         FROM inquilinos i
         LEFT JOIN imoveis im ON i.imovel_id = im.id
         WHERE i.ativo = 1 AND i.data_fim IS NOT NULL AND i.data_fim != ''
@@ -153,7 +153,7 @@ def index():
     ''', (em_60_dias,)).fetchall()
 
     saldos_anteriores = conn.execute('''
-        SELECT i.*, im.endereco
+        SELECT i.*, im.nome as imovel_nome, im.endereco
         FROM inquilinos i
         LEFT JOIN imoveis im ON i.imovel_id = im.id
         WHERE i.saldo_anterior > 0
@@ -194,8 +194,8 @@ def imovel_novo():
     if request.method == 'POST':
         conn = get_db()
         conn.execute(
-            'INSERT INTO imoveis (endereco, complemento, bairro, cidade, descricao) VALUES (?,?,?,?,?)',
-            (request.form['endereco'], request.form.get('complemento'),
+            'INSERT INTO imoveis (nome, endereco, complemento, bairro, cidade, descricao) VALUES (?,?,?,?,?,?)',
+            (request.form.get('nome'), request.form['endereco'], request.form.get('complemento'),
              request.form.get('bairro'), request.form.get('cidade'),
              request.form.get('descricao'))
         )
@@ -212,8 +212,8 @@ def imovel_editar(id):
     imovel = conn.execute('SELECT * FROM imoveis WHERE id=?', (id,)).fetchone()
     if request.method == 'POST':
         conn.execute(
-            'UPDATE imoveis SET endereco=?, complemento=?, bairro=?, cidade=?, descricao=? WHERE id=?',
-            (request.form['endereco'], request.form.get('complemento'),
+            'UPDATE imoveis SET nome=?, endereco=?, complemento=?, bairro=?, cidade=?, descricao=? WHERE id=?',
+            (request.form.get('nome'), request.form['endereco'], request.form.get('complemento'),
              request.form.get('bairro'), request.form.get('cidade'),
              request.form.get('descricao'), id)
         )
@@ -242,7 +242,7 @@ def imovel_excluir(id):
 def inquilinos():
     conn = get_db()
     lista = conn.execute('''
-        SELECT i.*, im.endereco as imovel_endereco
+        SELECT i.*, im.endereco as imovel_endereco, im.nome as imovel_nome
         FROM inquilinos i
         LEFT JOIN imoveis im ON i.imovel_id = im.id
         ORDER BY i.ativo DESC, i.nome
@@ -462,7 +462,7 @@ def pagamento_gerar():
 def pagamento_novo():
     conn = get_db()
     inquilinos_ativos = conn.execute(
-        'SELECT i.*, im.endereco FROM inquilinos i LEFT JOIN imoveis im ON i.imovel_id=im.id WHERE i.ativo=1 ORDER BY i.nome'
+        'SELECT i.*, im.endereco, im.nome as imovel_nome FROM inquilinos i LEFT JOIN imoveis im ON i.imovel_id=im.id WHERE i.ativo=1 ORDER BY i.nome'
     ).fetchall()
     if request.method == 'POST':
         aluguel = float(request.form.get('aluguel') or 0)
@@ -514,7 +514,7 @@ def pagamento_editar(id):
     conn = get_db()
     pagamento = conn.execute('SELECT * FROM pagamentos WHERE id=?', (id,)).fetchone()
     inquilinos_ativos = conn.execute(
-        'SELECT i.*, im.endereco FROM inquilinos i LEFT JOIN imoveis im ON i.imovel_id=im.id WHERE i.ativo=1 ORDER BY i.nome'
+        'SELECT i.*, im.endereco, im.nome as imovel_nome FROM inquilinos i LEFT JOIN imoveis im ON i.imovel_id=im.id WHERE i.ativo=1 ORDER BY i.nome'
     ).fetchall()
     if request.method == 'POST':
         aluguel = float(request.form.get('aluguel') or 0)
@@ -582,7 +582,7 @@ def relatorios():
     ''', (f'{ano}%',)).fetchall()
 
     inadimplentes = conn.execute('''
-        SELECT i.nome, i.telefone, im.endereco,
+        SELECT i.nome, i.telefone, im.endereco, im.nome as imovel_nome,
                COUNT(p.id) as qtd_atraso,
                SUM(p.total) as valor_total
         FROM pagamentos p
@@ -600,7 +600,7 @@ def relatorios():
     todos_inquilinos = conn.execute('SELECT id, nome FROM inquilinos ORDER BY nome').fetchall()
 
     resumo_por_inquilino = conn.execute('''
-        SELECT i.id, i.nome, im.endereco, i.saldo_anterior,
+        SELECT i.id, i.nome, im.endereco, im.nome as imovel_nome, i.saldo_anterior,
                COUNT(p.id) as qtd,
                COALESCE(SUM(p.total), 0) as total_cobrado,
                COALESCE(SUM(CASE WHEN p.status='pago' THEN p.total ELSE 0 END), 0) as total_pago,
@@ -622,7 +622,7 @@ def relatorios():
     detalhe_pagamentos = []
     if filtro_inquilino:
         detalhe_inquilino = conn.execute(
-            'SELECT i.*, im.endereco FROM inquilinos i LEFT JOIN imoveis im ON i.imovel_id=im.id WHERE i.id=?',
+            'SELECT i.*, im.endereco, im.nome as imovel_nome FROM inquilinos i LEFT JOIN imoveis im ON i.imovel_id=im.id WHERE i.id=?',
             (filtro_inquilino,)
         ).fetchone()
         detalhe_pagamentos = conn.execute('''

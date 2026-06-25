@@ -91,7 +91,7 @@
                 {% for im in imoveis %}
                 <option value="{{ im.id }}"
                   {% if inquilino and inquilino.imovel_id == im.id %}selected{% endif %}>
-                  {{ im.endereco }}{% if im.complemento %} — {{ im.complemento }}{% endif %}
+                  {{ im.nome or im.endereco }}{% if im.nome %} — {{ im.endereco }}{% endif %}
                 </option>
                 {% endfor %}
               </select>

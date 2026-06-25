@@ -33,7 +33,7 @@
               {% for i in inquilinos %}
               <option value="{{ i.id }}"
                 {% if pagamento and pagamento.inquilino_id == i.id %}selected{% endif %}>
-                {{ i.nome }} — {{ i.endereco or '?' }}
+                {{ i.nome }} — {{ i.imovel_nome or i.endereco or '?' }}
               </option>
               {% endfor %}
             </select>
