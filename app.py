@@ -557,6 +557,169 @@ def pagamento_excluir(id):
     return redirect(url_for('pagamentos'))
 
 
+# ─── ACORDOS JUDICIAIS ─────────────────────────────────────────────────────────
+
+def _calc_parcela_acordo(valor_base, juros, inpc, honorarios_pct):
+    total = round((valor_base or 0) + (juros or 0) + (inpc or 0), 2)
+    honorarios = round(total * (honorarios_pct or 0) / 100, 2)
+    liquido = round(total - honorarios, 2)
+    return total, honorarios, liquido
+
+
+@app.route('/acordos')
+def acordos():
+    conn = get_db()
+    lista = conn.execute('''
+        SELECT a.*,
+               COUNT(p.id) as qtd_parcelas,
+               COALESCE(SUM(CASE WHEN p.situacao='PAGO' THEN p.liquido_credor ELSE 0 END), 0) as liquido_recebido,
+               COALESCE(SUM(CASE WHEN p.situacao!='PAGO' THEN p.total_corrigido ELSE 0 END), 0) as total_aberto
+        FROM acordos a
+        LEFT JOIN parcelas_acordo p ON p.acordo_id = a.id
+        GROUP BY a.id
+        ORDER BY a.ativo DESC, a.devedor
+    ''').fetchall()
+    conn.close()
+    return render_template('acordos.html', acordos=lista)
+
+
+@app.route('/acordos/novo', methods=['GET', 'POST'])
+def acordo_novo():
+    if request.method == 'POST':
+        conn = get_db()
+        conn.execute('''
+            INSERT INTO acordos (processo, credor, devedor, advogado, honorarios_pct, observacao)
+            VALUES (?,?,?,?,?,?)
+        ''', (
+            request.form.get('processo'), request.form['credor'], request.form['devedor'],
+            request.form.get('advogado'), float(request.form.get('honorarios_pct') or 0),
+            request.form.get('observacao')
+        ))
+        conn.commit()
+        conn.close()
+        flash('Acordo cadastrado com sucesso!', 'success')
+        return redirect(url_for('acordos'))
+    return render_template('acordo_form.html', acordo=None)
+
+
+@app.route('/acordos/<int:id>/editar', methods=['GET', 'POST'])
+def acordo_editar(id):
+    conn = get_db()
+    acordo = conn.execute('SELECT * FROM acordos WHERE id=?', (id,)).fetchone()
+    if request.method == 'POST':
+        conn.execute('''
+            UPDATE acordos SET processo=?, credor=?, devedor=?, advogado=?,
+            honorarios_pct=?, ativo=?, observacao=? WHERE id=?
+        ''', (
+            request.form.get('processo'), request.form['credor'], request.form['devedor'],
+            request.form.get('advogado'), float(request.form.get('honorarios_pct') or 0),
+            1 if request.form.get('ativo') else 0, request.form.get('observacao'), id
+        ))
+        conn.commit()
+        conn.close()
+        flash('Acordo atualizado!', 'success')
+        return redirect(url_for('acordos'))
+    conn.close()
+    return render_template('acordo_form.html', acordo=acordo)
+
+
+@app.route('/acordos/<int:id>/excluir', methods=['POST'])
+def acordo_excluir(id):
+    conn = get_db()
+    conn.execute('DELETE FROM parcelas_acordo WHERE acordo_id=?', (id,))
+    conn.execute('DELETE FROM acordos WHERE id=?', (id,))
+    conn.commit()
+    conn.close()
+    flash('Acordo excluído.', 'warning')
+    return redirect(url_for('acordos'))
+
+
+@app.route('/acordos/<int:id>')
+def acordo_detalhe(id):
+    conn = get_db()
+    acordo = conn.execute('SELECT * FROM acordos WHERE id=?', (id,)).fetchone()
+    parcelas = conn.execute(
+        'SELECT * FROM parcelas_acordo WHERE acordo_id=? ORDER BY vencimento_previsto, id',
+        (id,)
+    ).fetchall()
+    conn.close()
+    return render_template('acordo_detalhe.html', acordo=acordo, parcelas=parcelas)
+
+
+@app.route('/acordos/<int:id>/parcelas/nova', methods=['GET', 'POST'])
+def parcela_acordo_nova(id):
+    conn = get_db()
+    acordo = conn.execute('SELECT * FROM acordos WHERE id=?', (id,)).fetchone()
+    if request.method == 'POST':
+        valor_base = float(request.form.get('valor_base') or 0)
+        juros = float(request.form.get('juros') or 0)
+        inpc = float(request.form.get('inpc') or 0)
+        total, honorarios, liquido = _calc_parcela_acordo(
+            valor_base, juros, inpc, acordo['honorarios_pct']
+        )
+        situacao = request.form.get('situacao', 'ABERTO')
+        conn.execute('''
+            INSERT INTO parcelas_acordo
+            (acordo_id, descricao, vencimento_previsto, data_pagamento, valor_base,
+             juros, inpc, total_corrigido, honorarios, liquido_credor, situacao,
+             forma_pagamento, observacao)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ''', (
+            id, request.form['descricao'], request.form.get('vencimento_previsto'),
+            request.form.get('data_pagamento') or None, valor_base, juros, inpc,
+            total, honorarios, liquido, situacao,
+            request.form.get('forma_pagamento'), request.form.get('observacao')
+        ))
+        conn.commit()
+        conn.close()
+        flash('Parcela adicionada!', 'success')
+        return redirect(url_for('acordo_detalhe', id=id))
+    conn.close()
+    return render_template('parcela_acordo_form.html', acordo=acordo, parcela=None)
+
+
+@app.route('/parcelas-acordo/<int:id>/editar', methods=['GET', 'POST'])
+def parcela_acordo_editar(id):
+    conn = get_db()
+    parcela = conn.execute('SELECT * FROM parcelas_acordo WHERE id=?', (id,)).fetchone()
+    acordo = conn.execute('SELECT * FROM acordos WHERE id=?', (parcela['acordo_id'],)).fetchone()
+    if request.method == 'POST':
+        valor_base = float(request.form.get('valor_base') or 0)
+        juros = float(request.form.get('juros') or 0)
+        inpc = float(request.form.get('inpc') or 0)
+        total, honorarios, liquido = _calc_parcela_acordo(
+            valor_base, juros, inpc, acordo['honorarios_pct']
+        )
+        situacao = request.form.get('situacao', 'ABERTO')
+        conn.execute('''
+            UPDATE parcelas_acordo SET descricao=?, vencimento_previsto=?, data_pagamento=?,
+            valor_base=?, juros=?, inpc=?, total_corrigido=?, honorarios=?, liquido_credor=?,
+            situacao=?, forma_pagamento=?, observacao=? WHERE id=?
+        ''', (
+            request.form['descricao'], request.form.get('vencimento_previsto'),
+            request.form.get('data_pagamento') or None, valor_base, juros, inpc,
+            total, honorarios, liquido, situacao,
+            request.form.get('forma_pagamento'), request.form.get('observacao'), id
+        ))
+        conn.commit()
+        conn.close()
+        flash('Parcela atualizada!', 'success')
+        return redirect(url_for('acordo_detalhe', id=parcela['acordo_id']))
+    conn.close()
+    return render_template('parcela_acordo_form.html', acordo=acordo, parcela=parcela)
+
+
+@app.route('/parcelas-acordo/<int:id>/excluir', methods=['POST'])
+def parcela_acordo_excluir(id):
+    conn = get_db()
+    parcela = conn.execute('SELECT acordo_id FROM parcelas_acordo WHERE id=?', (id,)).fetchone()
+    conn.execute('DELETE FROM parcelas_acordo WHERE id=?', (id,))
+    conn.commit()
+    conn.close()
+    flash('Parcela excluída.', 'warning')
+    return redirect(url_for('acordo_detalhe', id=parcela['acordo_id']))
+
+
 # ─── RELATÓRIOS ───────────────────────────────────────────────────────────────
 
 @app.route('/relatorios')

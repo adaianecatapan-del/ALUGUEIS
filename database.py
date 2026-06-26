@@ -61,6 +61,36 @@ def init_db():
         created_at TEXT DEFAULT (date('now'))
     )''')
 
+    c.execute('''CREATE TABLE IF NOT EXISTS acordos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        processo TEXT,
+        credor TEXT NOT NULL,
+        devedor TEXT NOT NULL,
+        advogado TEXT,
+        honorarios_pct REAL DEFAULT 0,
+        observacao TEXT,
+        ativo INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT (date('now'))
+    )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS parcelas_acordo (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        acordo_id INTEGER NOT NULL REFERENCES acordos(id),
+        descricao TEXT NOT NULL,
+        vencimento_previsto TEXT,
+        data_pagamento TEXT,
+        valor_base REAL DEFAULT 0,
+        juros REAL DEFAULT 0,
+        inpc REAL DEFAULT 0,
+        total_corrigido REAL DEFAULT 0,
+        honorarios REAL DEFAULT 0,
+        liquido_credor REAL DEFAULT 0,
+        situacao TEXT DEFAULT 'ABERTO',
+        forma_pagamento TEXT,
+        observacao TEXT,
+        created_at TEXT DEFAULT (date('now'))
+    )''')
+
     conn.commit()
     conn.close()
 

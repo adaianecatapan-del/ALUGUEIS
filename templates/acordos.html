@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Acordos Judiciais{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="fw-bold mb-0"><i class="bi bi-file-earmark-text me-2 text-primary"></i>Acordos Judiciais</h4>
+  <a href="{{ url_for('acordo_novo') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>Novo Acordo
+  </a>
+</div>
+
+{% if acordos %}
+<div class="row g-3">
+  {% for a in acordos %}
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h6 class="fw-bold mb-0">{{ a.devedor }}</h6>
+          {% if not a.ativo %}<span class="badge bg-secondary">Encerrado</span>{% endif %}
+        </div>
+        <p class="text-muted small mb-1">Credor: {{ a.credor }}</p>
+        {% if a.processo %}<p class="text-muted small mb-1">Processo: {{ a.processo }}</p>{% endif %}
+        {% if a.advogado %}<p class="text-muted small mb-1">Adv: {{ a.advogado }} ({{ a.honorarios_pct|int }}%)</p>{% endif %}
+        <hr class="my-2">
+        <div class="d-flex justify-content-between small">
+          <span class="text-muted">{{ a.qtd_parcelas }} parcela{{ 's' if a.qtd_parcelas != 1 }}</span>
+        </div>
+        <div class="d-flex justify-content-between mt-1">
+          <span class="text-success fw-semibold">Recebido líq.: R$ {{ "%.2f"|format(a.liquido_recebido) }}</span>
+        </div>
+        {% if a.total_aberto > 0 %}
+        <div class="d-flex justify-content-between">
+          <span class="text-warning fw-semibold">Em aberto: R$ {{ "%.2f"|format(a.total_aberto) }}</span>
+        </div>
+        {% endif %}
+      </div>
+      <div class="card-footer bg-transparent border-0 pt-0 d-flex gap-2">
+        <a href="{{ url_for('acordo_detalhe', id=a.id) }}" class="btn btn-sm btn-primary flex-fill">
+          <i class="bi bi-list-check me-1"></i>Parcelas
+        </a>
+        <a href="{{ url_for('acordo_editar', id=a.id) }}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-pencil"></i>
+        </a>
+        <form method="post" action="{{ url_for('acordo_excluir', id=a.id) }}" onsubmit="return confirm('Excluir este acordo e todas as parcelas?')">
+          <button class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-trash"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="card-body text-center py-5">
+    <i class="bi bi-file-earmark-text fs-1 text-muted mb-3"></i>
+    <h5 class="text-muted">Nenhum acordo cadastrado</h5>
+    <a href="{{ url_for('acordo_novo') }}" class="btn btn-primary mt-2">
+      <i class="bi bi-plus-lg me-1"></i>Cadastrar primeiro acordo
+    </a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

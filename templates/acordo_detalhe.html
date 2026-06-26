@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}{{ acordo.devedor }} - Parcelas{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <a href="{{ url_for('acordos') }}" class="btn btn-outline-secondary btn-sm me-3">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div>
+    <h4 class="fw-bold mb-0"><i class="bi bi-file-earmark-text me-2 text-primary"></i>{{ acordo.devedor }}</h4>
+    <small class="text-muted">Credor: {{ acordo.credor }}{% if acordo.processo %} · Processo: {{ acordo.processo }}{% endif %}{% if acordo.advogado %} · Adv: {{ acordo.advogado }} ({{ acordo.honorarios_pct|int }}%){% endif %}</small>
+  </div>
+</div>
+
+{% set total_liquido = parcelas | selectattr('situacao', 'equalto', 'PAGO') | sum(attribute='liquido_credor') %}
+{% set total_aberto = parcelas | rejectattr('situacao', 'equalto', 'PAGO') | sum(attribute='total_corrigido') %}
+<div class="row g-2 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="card text-center py-2" style="border-left:3px solid #198754">
+      <small class="text-muted">Recebido líq.</small>
+      <strong class="d-block text-success">R$ {{ "%.2f"|format(total_liquido) }}</strong>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center py-2" style="border-left:3px solid #ffc107">
+      <small class="text-muted">Em aberto</small>
+      <strong class="d-block text-warning">R$ {{ "%.2f"|format(total_aberto) }}</strong>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex justify-content-end mb-3">
+  <a href="{{ url_for('parcela_acordo_nova', id=acordo.id) }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>Nova Parcela
+  </a>
+</div>
+
+{% if parcelas %}
+<div class="row g-3">
+  {% for p in parcelas %}
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="card h-100 {% if p.situacao != 'PAGO' %}border-warning{% endif %}" style="border-width:1px">
+      <div class="card-body pb-2">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h6 class="fw-bold mb-0">{{ p.descricao }}</h6>
+          {% if p.situacao == 'PAGO' %}
+            <span class="badge badge-pago">PAGO</span>
+          {% else %}
+            <span class="badge badge-pendente">ABERTO</span>
+          {% endif %}
+        </div>
+        <small class="text-muted">Venc.: {{ p.vencimento_previsto or '—' }}</small>
+        <div class="small text-muted mt-2">
+          <div>Valor base: R$ {{ "%.2f"|format(p.valor_base) }}</div>
+          {% if p.juros %}<div>Juros: R$ {{ "%.2f"|format(p.juros) }}</div>{% endif %}
+          {% if p.inpc %}<div>INPC: R$ {{ "%.2f"|format(p.inpc) }}</div>{% endif %}
+          <div>Honorários ({{ acordo.honorarios_pct|int }}%): -R$ {{ "%.2f"|format(p.honorarios) }}</div>
+          {% if p.data_pagamento %}
+            <div class="text-success">Pago em {{ p.data_pagamento }}{% if p.forma_pagamento %} via {{ p.forma_pagamento }}{% endif %}</div>
+          {% endif %}
+          {% if p.observacao %}<div class="text-muted" style="word-break:break-all;">{{ p.observacao }}</div>{% endif %}
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <span class="small">Total corrigido: R$ {{ "%.2f"|format(p.total_corrigido) }}</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fs-5 fw-bold text-success">Líquido: R$ {{ "%.2f"|format(p.liquido_credor) }}</span>
+        </div>
+      </div>
+      <div class="card-footer bg-transparent border-0 pt-0 d-flex gap-2">
+        <a href="{{ url_for('parcela_acordo_editar', id=p.id) }}" class="btn btn-sm btn-outline-primary flex-fill">
+          <i class="bi bi-pencil me-1"></i>Editar
+        </a>
+        <form method="post" action="{{ url_for('parcela_acordo_excluir', id=p.id) }}" onsubmit="return confirm('Excluir esta parcela?')">
+          <button class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-trash"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="card-body text-center py-5">
+    <i class="bi bi-list-check fs-1 text-muted mb-3"></i>
+    <h5 class="text-muted">Nenhuma parcela cadastrada</h5>
+    <a href="{{ url_for('parcela_acordo_nova', id=acordo.id) }}" class="btn btn-primary mt-2">
+      <i class="bi bi-plus-lg me-1"></i>Adicionar primeira parcela
+    </a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

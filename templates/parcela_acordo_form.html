@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Editar' if parcela else 'Nova' }} Parcela{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <a href="{{ url_for('acordo_detalhe', id=acordo.id) }}" class="btn btn-outline-secondary btn-sm me-3">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="fw-bold mb-0">
+    <i class="bi bi-cash me-2 text-primary"></i>
+    {{ 'Editar Parcela' if parcela else 'Nova Parcela' }} — {{ acordo.devedor }}
+  </h4>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="card">
+      <div class="card-body p-4">
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Descrição <span class="text-danger">*</span></label>
+            <input type="text" name="descricao" class="form-control" required
+                   value="{{ parcela.descricao if parcela else '' }}" placeholder="Ex: Entrada, Parcela 01...">
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-sm-6">
+              <label class="form-label fw-semibold">Vencimento Previsto</label>
+              <input type="date" name="vencimento_previsto" class="form-control"
+                     value="{{ parcela.vencimento_previsto or '' if parcela else '' }}">
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label fw-semibold">Data de Pagamento</label>
+              <input type="date" name="data_pagamento" class="form-control"
+                     value="{{ parcela.data_pagamento or '' if parcela else '' }}">
+            </div>
+          </div>
+
+          <hr class="my-3">
+          <p class="fw-semibold small text-muted mb-2">VALORES (R$)</p>
+
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-sm-4">
+              <label class="form-label">Valor Base</label>
+              <div class="input-group">
+                <span class="input-group-text">R$</span>
+                <input type="number" name="valor_base" class="form-control" step="0.01" min="0"
+                       id="f_base" value="{{ parcela.valor_base if parcela else '0.00' }}"
+                       oninput="calcTotal()">
+              </div>
+            </div>
+            <div class="col-12 col-sm-4">
+              <label class="form-label">Juros</label>
+              <div class="input-group">
+                <span class="input-group-text">R$</span>
+                <input type="number" name="juros" class="form-control" step="0.01" min="0"
+                       id="f_juros" value="{{ parcela.juros if parcela else '0.00' }}"
+                       oninput="calcTotal()">
+              </div>
+            </div>
+            <div class="col-12 col-sm-4">
+              <label class="form-label">INPC</label>
+              <div class="input-group">
+                <span class="input-group-text">R$</span>
+                <input type="number" name="inpc" class="form-control" step="0.01" min="0"
+                       id="f_inpc" value="{{ parcela.inpc if parcela else '0.00' }}"
+                       oninput="calcTotal()">
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert-primary py-2 d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-semibold">Total Corrigido:</span>
+            <span class="fs-5 fw-bold" id="f_total">R$ 0,00</span>
+          </div>
+          <div class="alert alert-secondary py-2 d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-semibold">Honorários ({{ acordo.honorarios_pct|int }}%):</span>
+            <span class="fw-bold text-danger" id="f_honorarios">-R$ 0,00</span>
+          </div>
+          <div class="alert alert-success py-2 d-flex justify-content-between align-items-center mb-3">
+            <span class="fw-semibold">Líquido ao Credor:</span>
+            <span class="fs-5 fw-bold" id="f_liquido">R$ 0,00</span>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-sm-6">
+              <label class="form-label fw-semibold">Situação</label>
+              <select name="situacao" class="form-select">
+                <option value="ABERTO" {% if not parcela or parcela.situacao=='ABERTO' %}selected{% endif %}>Aberto</option>
+                <option value="PAGO" {% if parcela and parcela.situacao=='PAGO' %}selected{% endif %}>Pago</option>
+              </select>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label fw-semibold">Forma de Pagamento</label>
+              <select name="forma_pagamento" class="form-select">
+                <option value="">— Não informado —</option>
+                {% for opt in ['Pix','Dinheiro','Transferência','Cartão','Boleto','Outro'] %}
+                <option value="{{ opt }}" {% if parcela and parcela.forma_pagamento == opt %}selected{% endif %}>{{ opt }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Observação <span class="text-muted small fw-normal">(ex: detalhes do PIX)</span></label>
+            <textarea name="observacao" class="form-control" rows="2">{{ parcela.observacao or '' if parcela else '' }}</textarea>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-fill">
+              <i class="bi bi-check-lg me-1"></i>Salvar
+            </button>
+            <a href="{{ url_for('acordo_detalhe', id=acordo.id) }}" class="btn btn-outline-secondary flex-fill">Cancelar</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const HONORARIOS_PCT = {{ acordo.honorarios_pct or 0 }};
+
+function calcTotal() {
+  const base = parseFloat(document.getElementById('f_base').value) || 0;
+  const juros = parseFloat(document.getElementById('f_juros').value) || 0;
+  const inpc = parseFloat(document.getElementById('f_inpc').value) || 0;
+  const total = base + juros + inpc;
+  const honorarios = total * HONORARIOS_PCT / 100;
+  const liquido = total - honorarios;
+  document.getElementById('f_total').textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('f_honorarios').textContent = '-R$ ' + honorarios.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('f_liquido').textContent = 'R$ ' + liquido.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+document.addEventListener('DOMContentLoaded', calcTotal);
+</script>
+{% endblock %}
