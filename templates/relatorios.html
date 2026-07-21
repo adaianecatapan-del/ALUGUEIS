@@ -40,6 +40,25 @@
   </div>
 </div>
 
+<!-- Relatório mensal para impressão -->
+<div class="card mb-4 border-success">
+  <div class="card-body py-3">
+    <form action="{{ url_for('relatorio_mensal') }}" method="get" target="_blank"
+          class="d-flex gap-2 align-items-end flex-wrap">
+      <div>
+        <label class="form-label small fw-semibold mb-1">
+          <i class="bi bi-printer me-1 text-success"></i>Relatório do mês (para imprimir)
+        </label>
+        <input type="month" name="mes" class="form-control form-control-sm" value="{{ hoje[:7] }}" required>
+      </div>
+      <button type="submit" class="btn btn-sm btn-success">
+        <i class="bi bi-file-earmark-text me-1"></i>Gerar Relatório do Mês
+      </button>
+    </form>
+    <div class="form-text">Abre uma página com todos os pagamentos do mês escolhido, pronta para imprimir ou salvar em PDF.</div>
+  </div>
+</div>
+
 <!-- Detalhamento por inquilino -->
 {% if filtro_inquilino and detalhe_inquilino %}
 <div class="card mb-4">
