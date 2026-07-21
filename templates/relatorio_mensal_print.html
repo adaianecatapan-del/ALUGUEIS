@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatório Mensal {{ mes_referencia }}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #333;
+      background: white;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+    }
+
+    /* Cabeçalho */
+    .header {
+      text-align: center;
+      border-bottom: 3px solid #1e3a5f;
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      color: #1e3a5f;
+      margin-bottom: 5px;
+    }
+
+    .header p {
+      font-size: 14px;
+      color: #666;
+      margin: 3px 0;
+    }
+
+    .periodo {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e3a5f;
+      margin-top: 10px;
+    }
+
+    /* Resumo de estatísticas */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 30px;
+      page-break-inside: avoid;
+    }
+
+    .stat-box {
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .stat-box.success {
+      background-color: #d4edda;
+      border-color: #c3e6cb;
+    }
+
+    .stat-box.warning {
+      background-color: #fff3cd;
+      border-color: #ffeeba;
+    }
+
+    .stat-box.danger {
+      background-color: #f8d7da;
+      border-color: #f5c6cb;
+    }
+
+    .stat-box.info {
+      background-color: #d1ecf1;
+      border-color: #bee5eb;
+    }
+
+    .stat-box-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #666;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    .stat-box-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e3a5f;
+    }
+
+    .stat-box.success .stat-box-value { color: #155724; }
+    .stat-box.warning .stat-box-value { color: #856404; }
+    .stat-box.danger .stat-box-value { color: #721c24; }
+    .stat-box.info .stat-box-value { color: #0c5460; }
+
+    /* Tabela de pagamentos */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+      font-size: 12px;
+      page-break-inside: avoid;
+    }
+
+    table thead {
+      background-color: #1e3a5f;
+      color: white;
+    }
+
+    table th {
+      padding: 12px 8px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      border: 1px solid #1e3a5f;
+    }
+
+    table tbody tr {
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    table tbody tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+
+    table tbody tr:hover {
+      background-color: #f0f0f0;
+    }
+
+    table td {
+      padding: 10px 8px;
+      border: 1px solid #e0e0e0;
+    }
+
+    table th.text-end,
+    table td.text-end {
+      text-align: right;
+    }
+
+    table th.text-center,
+    table td.text-center {
+      text-align: center;
+    }
+
+    /* Status badges */
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      text-align: center;
+      min-width: 50px;
+    }
+
+    .badge-pago {
+      background-color: #198754;
+      color: white;
+    }
+
+    .badge-pendente {
+      background-color: #ffc107;
+      color: #000;
+    }
+
+    .badge-atrasado {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    /* Footer */
+    table tfoot {
+      background-color: #f0f0f0;
+      font-weight: 700;
+    }
+
+    table tfoot tr:last-child {
+      border-top: 2px solid #1e3a5f;
+      border-bottom: 3px solid #1e3a5f;
+    }
+
+    table tfoot td {
+      padding: 12px 8px;
+    }
+
+    /* Espaçamento */
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1e3a5f;
+      margin: 20px 0 15px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #1e3a5f;
+      page-break-after: avoid;
+    }
+
+    /* Sem dados */
+    .no-data {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+      font-style: italic;
+    }
+
+    /* Print styles */
+    @media print {
+      body {
+        padding: 0;
+        background: white;
+      }
+
+      .header {
+        margin-top: 0;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+
+      .container {
+        margin: 0;
+        box-shadow: none;
+      }
+
+      table {
+        page-break-inside: avoid;
+      }
+
+      .stats {
+        page-break-inside: avoid;
+      }
+
+      .section-title {
+        page-break-after: avoid;
+      }
+
+      @page {
+        margin: 15mm;
+      }
+    }
+
+    /* Botões de ação (não imprimir) */
+    .actions {
+      margin-bottom: 20px;
+      text-align: center;
+      page-break-after: avoid;
+    }
+
+    .actions button,
+    .actions a {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background-color: #1e3a5f;
+      color: white;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .actions button:hover,
+    .actions a:hover {
+      background-color: #2a5080;
+    }
+
+    /* Responsivo para telas pequenas */
+    @media (max-width: 768px) {
+      .stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      table {
+        font-size: 10px;
+      }
+
+      table th,
+      table td {
+        padding: 6px 4px;
+      }
+    }
+
+    /* Moeda formatação */
+    .currency {
+      font-family: 'Courier New', monospace;
+    }
+
+    .text-danger {
+      color: #dc3545;
+    }
+
+    .text-success {
+      color: #198754;
+    }
+
+    .text-warning {
+      color: #ffc107;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Cabeçalho -->
+    <div class="header">
+      <h1>RELATÓRIO MENSAL DE PAGAMENTOS</h1>
+      <p>Controle de Aluguel e Encargos</p>
+      {% set ano = mes_referencia[:4] %}
+      {% set mes = mes_referencia[5:] %}
+      <div class="periodo">
+        Período: {{ mes }}/{{ ano }}
+      </div>
+      <p style="font-size: 12px; margin-top: 10px; color: #999;">
+        Gerado em: {{ hoje }}
+      </p>
+    </div>
+
+    <!-- Resumo Estatístico -->
+    {% if resumo %}
+    <div class="stats">
+      <div class="stat-box info">
+        <div class="stat-box-label">Total de Pagamentos</div>
+        <div class="stat-box-value">{{ resumo.total_pagamentos or 0 }}</div>
+      </div>
+      <div class="stat-box success">
+        <div class="stat-box-label">Pagos</div>
+        <div class="stat-box-value">{{ resumo.pagos or 0 }}</div>
+      </div>
+      <div class="stat-box warning">
+        <div class="stat-box-label">Pendentes</div>
+        <div class="stat-box-value">{{ resumo.pendentes or 0 }}</div>
+      </div>
+      <div class="stat-box danger">
+        <div class="stat-box-label">Atrasados</div>
+        <div class="stat-box-value">{{ resumo.atrasados or 0 }}</div>
+      </div>
+    </div>
+
+    <!-- Valores Totais -->
+    <div class="stats">
+      <div class="stat-box" style="background-color: #e8f4f8; border-color: #b8dce8;">
+        <div class="stat-box-label">Valor Total</div>
+        <div class="stat-box-value" style="color: #0c5460;">
+          R$ {{ "%.2f"|format(resumo.valor_total or 0) }}
+        </div>
+      </div>
+      <div class="stat-box success">
+        <div class="stat-box-label">Valor Recebido</div>
+        <div class="stat-box-value">
+          R$ {{ "%.2f"|format(resumo.valor_pago or 0) }}
+        </div>
+      </div>
+      <div class="stat-box danger">
+        <div class="stat-box-label">Valor Pendente</div>
+        <div class="stat-box-value">
+          R$ {{ "%.2f"|format((resumo.valor_total or 0) - (resumo.valor_pago or 0)) }}
+        </div>
+      </div>
+      <div class="stat-box" style="background-color: #f0f8e8; border-color: #d8e8c8;">
+        <div class="stat-box-label">Líquido (s/ desconto)</div>
+        <div class="stat-box-value" style="color: #2d5016;">
+          R$ {{ "%.2f"|format(resumo.valor_liquido_total or 0) }}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Resumo por Tipo de Encargo -->
+    {% if resumo %}
+    <div class="section-title">Resumo de Encargos</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Tipo de Encargo</th>
+          <th class="text-end">Aluguel</th>
+          <th class="text-end">Pintura</th>
+          <th class="text-end">IPTU</th>
+          <th class="text-end">Taxa Lixo</th>
+          <th class="text-end">Gás</th>
+          <th class="text-end">Internet</th>
+          <th class="text-end">Taxa Água</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Valor Total</strong></td>
+          <td class="text-end currency">R$ {{ "%.2f"|format(resumo.total_aluguel or 0) }}</td>
+          <td class="text-end currency">R$ {{ "%.2f"|format(resumo.total_pintura or 0) }}</td>
+          <td class="text-end currency">R$ {{ "%.2f"|format(resumo.total_iptu or 0) }}</td>
+          <td class="text-end currency">R$ {{ "%.2f"|format(resumo.total_lixo or 0) }}</td>
+          <td class="text-end currency">R$ {{ "%.2f"|format(resumo.total_gas or 0) }}</td>
+          <td class="text-end currency">R$ {{ "%.2f"|format(resumo.total_internet or 0) }}</td>
+          <td class="text-end currency">R$ {{ "%.2f"|format(resumo.total_agua or 0) }}</td>
+        </tr>
+      </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Tabela de Pagamentos Detalhada -->
+    <div class="section-title">Detalhamento de Pagamentos</div>
+
+    {% if pagamentos %}
+    <table>
+      <thead>
+        <tr>
+          <th>Inquilino</th>
+          <th class="text-center">Imóvel</th>
+          <th class="text-end">Aluguel</th>
+          <th class="text-end">Pintura</th>
+          <th class="text-end">IPTU</th>
+          <th class="text-end">Lixo</th>
+          <th class="text-end">Gás</th>
+          <th class="text-end">Internet</th>
+          <th class="text-end">Água</th>
+          <th class="text-end">Admin</th>
+          <th class="text-end">Total</th>
+          <th class="text-end">Desc.</th>
+          <th class="text-end">Líquido</th>
+          <th class="text-center">Status</th>
+          <th class="text-center">Pago em</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in pagamentos %}
+        <tr>
+          <td><strong>{{ p.nome }}</strong></td>
+          <td class="text-center" style="font-size: 10px;">
+            {% if p.endereco %}
+              {{ p.endereco }}
+              {% if p.complemento %}<br>{{ p.complemento }}{% endif %}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td class="text-end currency">R$ {{ "%.2f"|format(p.aluguel or 0) }}</td>
+          <td class="text-end currency">{{ "R$ %.2f"|format(p.taxa_pintura) if p.taxa_pintura else '—' }}</td>
+          <td class="text-end currency">{{ "R$ %.2f"|format(p.iptu) if p.iptu else '—' }}</td>
+          <td class="text-end currency">{{ "R$ %.2f"|format(p.taxa_lixo) if p.taxa_lixo else '—' }}</td>
+          <td class="text-end currency">{{ "R$ %.2f"|format(p.gas) if p.gas else '—' }}</td>
+          <td class="text-end currency">{{ "R$ %.2f"|format(p.internet) if p.internet else '—' }}</td>
+          <td class="text-end currency">{{ "R$ %.2f"|format(p.taxa_agua) if p.taxa_agua else '—' }}</td>
+          <td class="text-end currency">{{ "-R$ %.2f"|format(p.taxa_administracao) if p.taxa_administracao else '—' }}</td>
+          <td class="text-end currency"><strong>R$ {{ "%.2f"|format(p.total or 0) }}</strong></td>
+          <td class="text-end currency text-danger">{{ "-R$ %.2f"|format(p.desconto_administracao) if p.desconto_administracao else '—' }}</td>
+          <td class="text-end currency text-success"><strong>R$ {{ "%.2f"|format(p.valor_liquido or p.total or 0) }}</strong></td>
+          <td class="text-center">
+            {% if p.status == 'pago' %}
+              <span class="badge badge-pago">PAGO</span>
+            {% elif p.status == 'atrasado' %}
+              <span class="badge badge-atrasado">ATRASADO</span>
+            {% else %}
+              <span class="badge badge-pendente">PENDENTE</span>
+            {% endif %}
+          </td>
+          <td class="text-center" style="font-size: 10px;">
+            {% if p.data_pagamento %}
+              {{ p.data_pagamento[8:10] }}/{{ p.data_pagamento[5:7] }}/{{ p.data_pagamento[0:4] }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2"><strong>TOTAL GERAL</strong></td>
+          <td class="text-end currency"><strong>R$ {{ "%.2f"|format(pagamentos | sum(attribute='aluguel')) }}</strong></td>
+          <td class="text-end currency"><strong>R$ {{ "%.2f"|format(pagamentos | sum(attribute='taxa_pintura')) }}</strong></td>
+          <td class="text-end currency"><strong>R$ {{ "%.2f"|format(pagamentos | sum(attribute='iptu')) }}</strong></td>
+          <td class="text-end currency"><strong>R$ {{ "%.2f"|format(pagamentos | sum(attribute='taxa_lixo')) }}</strong></td>
+          <td class="text-end currency"><strong>R$ {{ "%.2f"|format(pagamentos | sum(attribute='gas')) }}</strong></td>
+          <td class="text-end currency"><strong>R$ {{ "%.2f"|format(pagamentos | sum(attribute='internet')) }}</strong></td>
+          <td class="text-end currency"><strong>R$ {{ "%.2f"|format(pagamentos | sum(attribute='taxa_agua')) }}</strong></td>
+          <td class="text-end currency"><strong>R$ {{ "%.2f"|format(pagamentos | sum(attribute='taxa_administracao')) }}</strong></td>
+          <td class="text-end currency"><strong>R$ {{ "%.2f"|format(pagamentos | sum(attribute='total')) }}</strong></td>
+          <td class="text-end currency text-danger"><strong>R$ {{ "%.2f"|format(pagamentos | sum(attribute='desconto_administracao')) }}</strong></td>
+          <td class="text-end currency text-success"><strong>R$ {{ "%.2f"|format(pagamentos | sum(attribute='valor_liquido') or pagamentos | sum(attribute='total')) }}</strong></td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    </table>
+    {% else %}
+    <div class="no-data">
+      <p>Nenhum pagamento registrado para o período {{ mes_referencia }}.</p>
+    </div>
+    {% endif %}
+
+    <!-- Rodapé -->
+    <div style="margin-top: 40px; text-align: center; border-top: 1px solid #ddd; padding-top: 20px; color: #999; font-size: 11px;">
+      <p>Relatório gerado automaticamente pelo Sistema de Controle de Aluguel</p>
+      <p>Este documento é válido apenas para fins informativos</p>
+    </div>
+  </div>
+
+  <!-- Ações (não aparecem na impressão) -->
+  <div class="actions no-print">
+    <button onclick="window.print()">🖨️ Imprimir</button>
+    <button onclick="window.history.back()">← Voltar</button>
+  </div>
+
+  <script>
+    // Auto-print ao carregar (opcional)
+    // window.print();
+  </script>
+</body>
+</html>

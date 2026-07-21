@@ -722,6 +722,53 @@ def parcela_acordo_excluir(id):
 
 # ─── RELATÓRIOS ───────────────────────────────────────────────────────────────
 
+@app.route('/relatorios/mensal')
+def relatorio_mensal():
+    mes_referencia = request.args.get('mes', date.today().strftime('%Y-%m'))
+    conn = get_db()
+
+    pagamentos = conn.execute('''
+        SELECT p.*, i.nome, i.cpf, im.endereco, im.complemento
+        FROM pagamentos p
+        JOIN inquilinos i ON p.inquilino_id = i.id
+        LEFT JOIN imoveis im ON i.imovel_id = im.id
+        WHERE p.mes_referencia = ?
+        ORDER BY i.nome, p.id
+    ''', (mes_referencia,)).fetchall()
+
+    resumo = conn.execute('''
+        SELECT
+            COUNT(*) as total_pagamentos,
+            SUM(CASE WHEN status='pago' THEN 1 ELSE 0 END) as pagos,
+            SUM(CASE WHEN status='pendente' THEN 1 ELSE 0 END) as pendentes,
+            SUM(CASE WHEN status='atrasado' THEN 1 ELSE 0 END) as atrasados,
+            SUM(total) as valor_total,
+            SUM(CASE WHEN status='pago' THEN total ELSE 0 END) as valor_pago,
+            SUM(aluguel) as total_aluguel,
+            SUM(CASE WHEN status='pago' THEN aluguel ELSE 0 END) as aluguel_pago,
+            SUM(taxa_pintura) as total_pintura,
+            SUM(iptu) as total_iptu,
+            SUM(taxa_lixo) as total_lixo,
+            SUM(gas) as total_gas,
+            SUM(internet) as total_internet,
+            SUM(taxa_agua) as total_agua,
+            SUM(taxa_administracao) as total_admin,
+            SUM(desconto_administracao) as total_desconto_admin,
+            SUM(CASE WHEN status='pago' THEN (total - aluguel) ELSE 0 END) as encargos_pago,
+            SUM(valor_liquido) as valor_liquido_total
+        FROM pagamentos
+        WHERE mes_referencia = ?
+    ''', (mes_referencia,)).fetchone()
+
+    conn.close()
+
+    return render_template('relatorio_mensal_print.html',
+        mes_referencia=mes_referencia,
+        pagamentos=pagamentos,
+        resumo=resumo
+    )
+
+
 @app.route('/relatorios')
 def relatorios():
     ano = request.args.get('ano', date.today().year)
