@@ -722,51 +722,94 @@ def parcela_acordo_excluir(id):
 
 # ─── RELATÓRIOS ───────────────────────────────────────────────────────────────
 
+@app.route('/relatorios/mensal/json')
+def relatorio_mensal_json():
+    """API para obter dados do relatório mensal em JSON"""
+    try:
+        mes_referencia = request.args.get('mes', date.today().strftime('%Y-%m'))
+        conn = get_db()
+
+        pagamentos = conn.execute('''
+            SELECT p.*, i.nome, i.cpf, im.endereco, im.complemento
+            FROM pagamentos p
+            JOIN inquilinos i ON p.inquilino_id = i.id
+            LEFT JOIN imoveis im ON i.imovel_id = im.id
+            WHERE p.mes_referencia = ?
+            ORDER BY i.nome, p.id
+        ''', (mes_referencia,)).fetchall()
+
+        resumo = conn.execute('''
+            SELECT
+                COUNT(*) as total_pagamentos,
+                SUM(CASE WHEN status='pago' THEN 1 ELSE 0 END) as pagos,
+                SUM(CASE WHEN status='pendente' THEN 1 ELSE 0 END) as pendentes,
+                SUM(CASE WHEN status='atrasado' THEN 1 ELSE 0 END) as atrasados,
+                SUM(total) as valor_total,
+                SUM(CASE WHEN status='pago' THEN total ELSE 0 END) as valor_pago
+            FROM pagamentos
+            WHERE mes_referencia = ?
+        ''', (mes_referencia,)).fetchone()
+
+        conn.close()
+
+        return jsonify({
+            'mes': mes_referencia,
+            'resumo': dict(resumo) if resumo else {},
+            'pagamentos': [dict(p) for p in pagamentos]
+        })
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
 @app.route('/relatorios/mensal')
 def relatorio_mensal():
-    mes_referencia = request.args.get('mes', date.today().strftime('%Y-%m'))
-    conn = get_db()
+    try:
+        mes_referencia = request.args.get('mes', date.today().strftime('%Y-%m'))
+        conn = get_db()
 
-    pagamentos = conn.execute('''
-        SELECT p.*, i.nome, i.cpf, im.endereco, im.complemento
-        FROM pagamentos p
-        JOIN inquilinos i ON p.inquilino_id = i.id
-        LEFT JOIN imoveis im ON i.imovel_id = im.id
-        WHERE p.mes_referencia = ?
-        ORDER BY i.nome, p.id
-    ''', (mes_referencia,)).fetchall()
+        pagamentos = conn.execute('''
+            SELECT p.*, i.nome, i.cpf, im.endereco, im.complemento
+            FROM pagamentos p
+            JOIN inquilinos i ON p.inquilino_id = i.id
+            LEFT JOIN imoveis im ON i.imovel_id = im.id
+            WHERE p.mes_referencia = ?
+            ORDER BY i.nome, p.id
+        ''', (mes_referencia,)).fetchall()
 
-    resumo = conn.execute('''
-        SELECT
-            COUNT(*) as total_pagamentos,
-            SUM(CASE WHEN status='pago' THEN 1 ELSE 0 END) as pagos,
-            SUM(CASE WHEN status='pendente' THEN 1 ELSE 0 END) as pendentes,
-            SUM(CASE WHEN status='atrasado' THEN 1 ELSE 0 END) as atrasados,
-            SUM(total) as valor_total,
-            SUM(CASE WHEN status='pago' THEN total ELSE 0 END) as valor_pago,
-            SUM(aluguel) as total_aluguel,
-            SUM(CASE WHEN status='pago' THEN aluguel ELSE 0 END) as aluguel_pago,
-            SUM(taxa_pintura) as total_pintura,
-            SUM(iptu) as total_iptu,
-            SUM(taxa_lixo) as total_lixo,
-            SUM(gas) as total_gas,
-            SUM(internet) as total_internet,
-            SUM(taxa_agua) as total_agua,
-            SUM(taxa_administracao) as total_admin,
-            SUM(desconto_administracao) as total_desconto_admin,
-            SUM(CASE WHEN status='pago' THEN (total - aluguel) ELSE 0 END) as encargos_pago,
-            SUM(valor_liquido) as valor_liquido_total
-        FROM pagamentos
-        WHERE mes_referencia = ?
-    ''', (mes_referencia,)).fetchone()
+        resumo = conn.execute('''
+            SELECT
+                COUNT(*) as total_pagamentos,
+                SUM(CASE WHEN status='pago' THEN 1 ELSE 0 END) as pagos,
+                SUM(CASE WHEN status='pendente' THEN 1 ELSE 0 END) as pendentes,
+                SUM(CASE WHEN status='atrasado' THEN 1 ELSE 0 END) as atrasados,
+                SUM(total) as valor_total,
+                SUM(CASE WHEN status='pago' THEN total ELSE 0 END) as valor_pago,
+                SUM(aluguel) as total_aluguel,
+                SUM(CASE WHEN status='pago' THEN aluguel ELSE 0 END) as aluguel_pago,
+                SUM(taxa_pintura) as total_pintura,
+                SUM(iptu) as total_iptu,
+                SUM(taxa_lixo) as total_lixo,
+                SUM(gas) as total_gas,
+                SUM(internet) as total_internet,
+                SUM(taxa_agua) as total_agua,
+                SUM(taxa_administracao) as total_admin,
+                SUM(desconto_administracao) as total_desconto_admin,
+                SUM(CASE WHEN status='pago' THEN (total - aluguel) ELSE 0 END) as encargos_pago,
+                SUM(valor_liquido) as valor_liquido_total
+            FROM pagamentos
+            WHERE mes_referencia = ?
+        ''', (mes_referencia,)).fetchone()
 
-    conn.close()
+        conn.close()
 
-    return render_template('relatorio_mensal_print.html',
-        mes_referencia=mes_referencia,
-        pagamentos=pagamentos,
-        resumo=resumo
-    )
+        return render_template('relatorio_mensal_print.html',
+            mes_referencia=mes_referencia,
+            pagamentos=pagamentos,
+            resumo=resumo,
+            hoje=date.today().isoformat()
+        )
+    except Exception as e:
+        return f"Erro ao gerar relatório: {str(e)}", 500
 
 
 @app.route('/relatorios')
