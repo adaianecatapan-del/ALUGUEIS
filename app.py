@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, session
 from werkzeug.utils import secure_filename
+from werkzeug.security import check_password_hash
 from database import get_db, init_db, migrate_db, atualizar_status_pagamentos
 from datetime import date, datetime, timedelta
 import calendar
@@ -7,16 +8,68 @@ import os
 import json
 import urllib.request
 
-app = Flask(__name__)
-app.secret_key = 'alugueis-secret-2024'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+app = Flask(__name__)
+
+# Chave secreta persistente (guardada fora do git) para manter a sessao valida entre reinicios
+_secret_file = os.path.join(BASE_DIR, '.secret_key')
+if os.path.exists(_secret_file):
+    with open(_secret_file, 'rb') as _f:
+        app.secret_key = _f.read()
+else:
+    _key = os.urandom(24)
+    with open(_secret_file, 'wb') as _f:
+        _f.write(_key)
+    app.secret_key = _key
+
+# Mantem o usuario logado por 30 dias (nao precisa digitar a senha toda vez)
+app.permanent_session_lifetime = timedelta(days=30)
+
+# Credenciais de acesso (senha guardada como hash, nunca em texto puro)
+LOGIN_USUARIO = 'Adaiane'
+LOGIN_SENHA_HASH = 'scrypt:32768:8:1$aOzHOgjUxeN6j5Nl$88e29ae8e01750acc7bc404210997d45120fd69b65c88907a5fc8cd64efe9ff8c8952253d349f6ed868248305a69ec93d7aa6eb69a5735c535c2f199351602bf'
+
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 @app.context_processor
 def inject_globals():
     return {'hoje': date.today().isoformat(), 'ano_atual': date.today().year}
+
+
+# ─── LOGIN ────────────────────────────────────────────────────────────────────
+
+@app.before_request
+def exigir_login():
+    """Bloqueia todas as paginas para quem nao esta logado."""
+    rotas_livres = {'login', 'static'}
+    if request.endpoint in rotas_livres:
+        return
+    if not session.get('logado'):
+        return redirect(url_for('login'))
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if session.get('logado'):
+        return redirect(url_for('index'))
+    if request.method == 'POST':
+        usuario = (request.form.get('usuario') or '').strip()
+        senha = request.form.get('senha') or ''
+        if usuario == LOGIN_USUARIO and check_password_hash(LOGIN_SENHA_HASH, senha):
+            session.permanent = True
+            session['logado'] = True
+            return redirect(url_for('index'))
+        return render_template('login.html', erro='Usuário ou senha incorretos.')
+    return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 
 # ─── HELPERS ──────────────────────────────────────────────────────────────────
