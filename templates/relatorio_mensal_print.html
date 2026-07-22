@@ -436,6 +436,7 @@
           <th class="text-end">Líquido</th>
           <th class="text-center">Status</th>
           <th class="text-center">Pago em</th>
+          <th>Observação</th>
         </tr>
       </thead>
       <tbody>
@@ -477,6 +478,12 @@
               —
             {% endif %}
           </td>
+          <td style="font-size: 10px; max-width: 160px; word-break: break-word;">
+            {% if p.observacao == 'pintura-inicio' %}Entrada (pintura)
+            {% elif p.observacao == 'pintura-fim' %}Saída (pintura)
+            {% elif p.observacao %}{{ p.observacao }}
+            {% else %}—{% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -494,7 +501,7 @@
           <td class="text-end currency"><strong>R$ {{ "%.2f"|format(pagamentos | sum(attribute='total')) }}</strong></td>
           <td class="text-end currency text-danger"><strong>R$ {{ "%.2f"|format(pagamentos | sum(attribute='desconto_administracao')) }}</strong></td>
           <td class="text-end currency text-success"><strong>R$ {{ "%.2f"|format(pagamentos | sum(attribute='valor_liquido') or pagamentos | sum(attribute='total')) }}</strong></td>
-          <td colspan="2"></td>
+          <td colspan="3"></td>
         </tr>
       </tfoot>
     </table>
