@@ -493,12 +493,27 @@ def inquilino_extrato_importar_pagamentos(id):
         elif p['observacao'] == 'pintura-fim':
             descricao = f"Pintura (saída) {mes}/{ano}"
         data = p['data_pagamento'] if p['status'] == 'pago' and p['data_pagamento'] else (p['data_vencimento'] or date.today().isoformat())
-        credito = p['total'] if p['status'] == 'pago' else 0
-        conn.execute(
-            'INSERT INTO extrato_lancamentos (inquilino_id, data, descricao, debito, credito, pagamento_id) '
-            'VALUES (?,?,?,?,?,?)',
-            (id, data, descricao, p['total'], credito, p['id'])
-        )
+        desconto_admin = p['desconto_administracao'] or 0
+
+        if p['status'] == 'pago' and desconto_admin > 0:
+            valor_liquido = p['total'] - desconto_admin
+            for desc, deb, cred in [
+                (descricao, 0, p['total']),
+                ('tx de adm', desconto_admin, 0),
+                ('valor do depósito', valor_liquido, 0),
+            ]:
+                conn.execute(
+                    'INSERT INTO extrato_lancamentos (inquilino_id, data, descricao, debito, credito, pagamento_id) '
+                    'VALUES (?,?,?,?,?,?)',
+                    (id, data, desc, deb, cred, p['id'])
+                )
+        else:
+            credito = p['total'] if p['status'] == 'pago' else 0
+            conn.execute(
+                'INSERT INTO extrato_lancamentos (inquilino_id, data, descricao, debito, credito, pagamento_id) '
+                'VALUES (?,?,?,?,?,?)',
+                (id, data, descricao, p['total'], credito, p['id'])
+            )
         importados += 1
 
     conn.commit()
