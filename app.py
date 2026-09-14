@@ -86,6 +86,22 @@ PARCELA_COL = {
 }
 
 
+def _calc_linhas_extrato(lancamentos):
+    """Calcula saldo acumulado e agrupa visualmente por mês (para zebrar linhas do mesmo mês)."""
+    linhas = []
+    saldo = 0
+    grupo = 0
+    mes_anterior = None
+    for l in lancamentos:
+        saldo += (l['debito'] or 0) - (l['credito'] or 0)
+        mes = l['data'][:7] if l['data'] else ''
+        if mes != mes_anterior:
+            grupo += 1
+            mes_anterior = mes
+        linhas.append({**dict(l), 'saldo_acumulado': saldo, 'grupo': grupo})
+    return linhas, saldo
+
+
 def _ajustar_saldo_anterior(conn, inquilino_id, delta):
     """Ajusta o saldo_anterior do inquilino. delta positivo aumenta (reverte abatimento),
     delta negativo diminui (aplica abatimento). Nunca deixa ficar negativo."""
@@ -451,11 +467,7 @@ def inquilino_extrato(id):
     ).fetchall()
     conn.close()
 
-    linhas = []
-    saldo = 0
-    for l in lancamentos:
-        saldo += (l['debito'] or 0) - (l['credito'] or 0)
-        linhas.append({**dict(l), 'saldo_acumulado': saldo})
+    linhas, saldo = _calc_linhas_extrato(lancamentos)
 
     return render_template('extrato.html', inquilino=inquilino, linhas=linhas,
                            saldo_final=saldo, hoje=date.today().isoformat())
@@ -541,11 +553,7 @@ def inquilino_extrato_imprimir(id):
     ).fetchall()
     conn.close()
 
-    linhas = []
-    saldo = 0
-    for l in lancamentos:
-        saldo += (l['debito'] or 0) - (l['credito'] or 0)
-        linhas.append({**dict(l), 'saldo_acumulado': saldo})
+    linhas, saldo = _calc_linhas_extrato(lancamentos)
 
     return render_template('extrato_print.html', inquilino=inquilino, linhas=linhas,
                            saldo_final=saldo, hoje=date.today().isoformat())

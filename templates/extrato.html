@@ -110,7 +110,7 @@
         </thead>
         <tbody>
           {% for l in linhas %}
-          <tr>
+          <tr class="{{ 'table-light' if l.grupo is odd else '' }}">
             <td>{{ l.data.split('-')[2] }}/{{ l.data.split('-')[1] }}/{{ l.data.split('-')[0] }}</td>
             <td>{{ l.descricao }}</td>
             <td class="text-end">{{ "R$ %.2f"|format(l.debito) if l.debito else '—' }}</td>

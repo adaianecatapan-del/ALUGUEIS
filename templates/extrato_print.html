@@ -25,7 +25,7 @@
     table thead { background-color: #1e3a5f; color: white; }
     table th { padding: 10px 8px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; border: 1px solid #1e3a5f; }
     table tbody tr { border-bottom: 1px solid #e0e0e0; }
-    table tbody tr:nth-child(even) { background-color: #f9f9f9; }
+    table tbody tr.grupo-par { background-color: #f2f4f7; }
     table td { padding: 8px; border: 1px solid #e0e0e0; }
     table th.text-end, table td.text-end { text-align: right; }
     table th.text-center, table td.text-center { text-align: center; }
@@ -87,7 +87,7 @@
       </thead>
       <tbody>
         {% for l in linhas %}
-        <tr>
+        <tr class="{{ 'grupo-par' if l.grupo is even else '' }}">
           <td>{{ l.data.split('-')[2] }}/{{ l.data.split('-')[1] }}/{{ l.data.split('-')[0] }}</td>
           <td>{{ l.descricao }}</td>
           <td class="text-end currency">{{ "R$ %.2f"|format(l.debito) if l.debito else '—' }}</td>
