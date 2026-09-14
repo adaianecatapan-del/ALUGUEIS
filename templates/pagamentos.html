@@ -82,8 +82,8 @@
 
 <div class="row g-3">
   {% for p in pagamentos %}
-  <div class="col-12 col-md-6 col-lg-4">
-    <div class="card h-100 {% if p.status == 'atrasado' %}border-danger{% elif p.status == 'pendente' %}border-warning{% endif %}" style="border-width:1px">
+  <div class="col-12">
+    <div class="card {% if p.status == 'atrasado' %}border-danger{% elif p.status == 'pendente' %}border-warning{% endif %}" style="border-width:1px">
       <div class="card-body pb-2">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <div>

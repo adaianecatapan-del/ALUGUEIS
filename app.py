@@ -431,9 +431,7 @@ def pagamentos():
         query += ' AND p.status = ?'
         params.append(filtro_status)
     query += '''
-        ORDER BY
-            CASE p.status WHEN 'atrasado' THEN 0 WHEN 'pendente' THEN 1 ELSE 2 END,
-            p.data_vencimento
+        ORDER BY p.mes_referencia, p.data_vencimento
     '''
 
     conn = get_db()
