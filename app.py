@@ -443,7 +443,7 @@ def pagamentos():
         query += ' AND p.status = ?'
         params.append(filtro_status)
     query += '''
-        ORDER BY p.mes_referencia, p.data_vencimento
+        ORDER BY p.mes_referencia DESC, p.data_vencimento DESC
     '''
 
     conn = get_db()
