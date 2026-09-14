@@ -474,6 +474,42 @@ def extrato_lancamento_excluir(id):
     return redirect(url_for('inquilinos'))
 
 
+@app.route('/inquilinos/<int:id>/extrato/importar-pagamentos', methods=['POST'])
+def inquilino_extrato_importar_pagamentos(id):
+    conn = get_db()
+    pagamentos = conn.execute('''
+        SELECT p.* FROM pagamentos p
+        WHERE p.inquilino_id = ?
+          AND NOT EXISTS (SELECT 1 FROM extrato_lancamentos e WHERE e.pagamento_id = p.id)
+        ORDER BY p.mes_referencia
+    ''', (id,)).fetchall()
+
+    importados = 0
+    for p in pagamentos:
+        ano, mes = p['mes_referencia'].split('-')
+        descricao = f"Aluguel ref {mes}/{ano}"
+        if p['observacao'] == 'pintura-inicio':
+            descricao = f"Pintura (entrada) {mes}/{ano}"
+        elif p['observacao'] == 'pintura-fim':
+            descricao = f"Pintura (saída) {mes}/{ano}"
+        data = p['data_pagamento'] if p['status'] == 'pago' and p['data_pagamento'] else (p['data_vencimento'] or date.today().isoformat())
+        credito = p['total'] if p['status'] == 'pago' else 0
+        conn.execute(
+            'INSERT INTO extrato_lancamentos (inquilino_id, data, descricao, debito, credito, pagamento_id) '
+            'VALUES (?,?,?,?,?,?)',
+            (id, data, descricao, p['total'], credito, p['id'])
+        )
+        importados += 1
+
+    conn.commit()
+    conn.close()
+    if importados:
+        flash(f'{importados} pagamento(s) importado(s) para o extrato!', 'success')
+    else:
+        flash('Nenhum pagamento novo para importar — já estão todos aqui.', 'info')
+    return redirect(url_for('inquilino_extrato', id=id))
+
+
 @app.route('/inquilinos/<int:id>/extrato/imprimir')
 def inquilino_extrato_imprimir(id):
     conn = get_db()

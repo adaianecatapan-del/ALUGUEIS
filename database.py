@@ -98,6 +98,7 @@ def init_db():
         descricao TEXT NOT NULL,
         debito REAL DEFAULT 0,
         credito REAL DEFAULT 0,
+        pagamento_id INTEGER REFERENCES pagamentos(id),
         created_at TEXT DEFAULT (date('now'))
     )''')
 
@@ -155,6 +156,13 @@ def migrate_db():
     ]:
         try:
             conn.execute(f'ALTER TABLE pagamentos ADD COLUMN {col} {defn}')
+        except Exception:
+            pass
+    for col, defn in [
+        ('pagamento_id', 'INTEGER REFERENCES pagamentos(id)'),
+    ]:
+        try:
+            conn.execute(f'ALTER TABLE extrato_lancamentos ADD COLUMN {col} {defn}')
         except Exception:
             pass
     conn.commit()
