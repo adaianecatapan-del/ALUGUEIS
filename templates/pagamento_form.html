@@ -28,7 +28,7 @@
         <form method="post">
           <div class="mb-3">
             <label class="form-label fw-semibold">Inquilino <span class="text-danger">*</span></label>
-            <select name="inquilino_id" class="form-select" required id="sel_inquilino" onchange="preencherValores()">
+            <select name="inquilino_id" class="form-select" required id="sel_inquilino" onchange="preencherValores(true)">
               <option value="">— Selecione —</option>
               {% for i in inquilinos %}
               <option value="{{ i.id }}"
@@ -107,6 +107,20 @@
             <span class="fs-5 fw-bold" id="f_liquido">R$ 0,00</span>
           </div>
 
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Abatimento do Débito Anterior <span class="text-muted small fw-normal">(quanto desse pagamento vai para quitar a dívida anterior)</span></label>
+            <div class="input-group">
+              <span class="input-group-text">R$</span>
+              <input type="number" name="abatimento_saldo_anterior" class="form-control" step="0.01" min="0"
+                     id="f_abatimento" value="{{ pagamento.abatimento_saldo_anterior if pagamento else '0.00' }}"
+                     oninput="atualizarSaldoRestante()">
+            </div>
+            <div class="form-text">
+              Débito anterior atual deste inquilino: <strong id="saldo_atual">R$ 0,00</strong>
+              — depois deste abatimento ficará: <strong id="saldo_restante" class="text-success">R$ 0,00</strong>
+            </div>
+          </div>
+
           {% if pagamento %}
           <div class="row g-3 mb-3">
             <div class="col-12 col-sm-6">
@@ -155,6 +169,8 @@
 {% block scripts %}
 <script>
 const ENCARGO_FIELD_IDS = ['f_iptu', 'f_lixo', 'f_gas', 'f_internet', 'f_agua', 'f_administracao'];
+const ABATIMENTO_ORIGINAL = {{ (pagamento.abatimento_saldo_anterior or 0) if pagamento else 0 }};
+let saldoBase = 0;
 
 function calcTotal() {
   const a = parseFloat(document.getElementById('f_aluguel').value) || 0;
@@ -170,25 +186,42 @@ function calcTotal() {
   document.getElementById('f_liquido').textContent = 'R$ ' + (total - desconto).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
-function preencherValores() {
+function atualizarSaldoRestante() {
+  const abatimento = parseFloat(document.getElementById('f_abatimento').value) || 0;
+  const restante = Math.max(0, saldoBase - abatimento);
+  document.getElementById('saldo_atual').textContent = 'R$ ' + saldoBase.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('saldo_restante').textContent = 'R$ ' + restante.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function preencherValores(sobrescreverValores) {
   const id = document.getElementById('sel_inquilino').value;
   if (!id) return;
   fetch('/api/inquilino/' + id)
     .then(r => r.json())
     .then(d => {
-      document.getElementById('f_aluguel').value = (d.aluguel || 0).toFixed(2);
-      document.getElementById('f_pintura').value = (d.taxa_pintura || 0).toFixed(2);
-      document.getElementById('f_iptu').value = (d.iptu || 0).toFixed(2);
-      document.getElementById('f_lixo').value = (d.taxa_lixo || 0).toFixed(2);
-      document.getElementById('f_gas').value = (d.gas || 0).toFixed(2);
-      document.getElementById('f_internet').value = (d.internet || 0).toFixed(2);
-      document.getElementById('f_agua').value = (d.taxa_agua || 0).toFixed(2);
-      document.getElementById('f_administracao').value = (d.taxa_administracao || 0).toFixed(2);
-      document.getElementById('f_desconto_admin').value = (d.taxa_administracao_valor_fixo || 0).toFixed(2);
-      calcTotal();
+      if (sobrescreverValores) {
+        document.getElementById('f_aluguel').value = (d.aluguel || 0).toFixed(2);
+        document.getElementById('f_pintura').value = (d.taxa_pintura || 0).toFixed(2);
+        document.getElementById('f_iptu').value = (d.iptu || 0).toFixed(2);
+        document.getElementById('f_lixo').value = (d.taxa_lixo || 0).toFixed(2);
+        document.getElementById('f_gas').value = (d.gas || 0).toFixed(2);
+        document.getElementById('f_internet').value = (d.internet || 0).toFixed(2);
+        document.getElementById('f_agua').value = (d.taxa_agua || 0).toFixed(2);
+        document.getElementById('f_administracao').value = (d.taxa_administracao || 0).toFixed(2);
+        document.getElementById('f_desconto_admin').value = (d.taxa_administracao_valor_fixo || 0).toFixed(2);
+        document.getElementById('f_abatimento').value = '0.00';
+        calcTotal();
+      }
+      saldoBase = (d.saldo_anterior || 0) + ABATIMENTO_ORIGINAL;
+      atualizarSaldoRestante();
     });
 }
 
-document.addEventListener('DOMContentLoaded', calcTotal);
+document.addEventListener('DOMContentLoaded', () => {
+  calcTotal();
+  if (document.getElementById('sel_inquilino').value) {
+    preencherValores(false);
+  }
+});
 </script>
 {% endblock %}

@@ -86,6 +86,18 @@ PARCELA_COL = {
 }
 
 
+def _ajustar_saldo_anterior(conn, inquilino_id, delta):
+    """Ajusta o saldo_anterior do inquilino. delta positivo aumenta (reverte abatimento),
+    delta negativo diminui (aplica abatimento). Nunca deixa ficar negativo."""
+    if not inquilino_id or not delta:
+        return
+    inq = conn.execute('SELECT saldo_anterior FROM inquilinos WHERE id=?', (inquilino_id,)).fetchone()
+    if not inq:
+        return
+    novo = max(0, (inq['saldo_anterior'] or 0) + delta)
+    conn.execute('UPDATE inquilinos SET saldo_anterior=? WHERE id=?', (novo, inquilino_id))
+
+
 def _get_parcela(valor_total, n_parcelas, mes_inicio, mes_atual):
     """Retorna (valor_parcela, num, total) se mes_atual é mês de parcela, senão None."""
     if not valor_total or valor_total <= 0:
@@ -525,16 +537,19 @@ def pagamento_novo():
 
         desconto_admin = float(request.form.get('desconto_administracao') or 0)
         valor_liquido = total - desconto_admin
+        abatimento_saldo = float(request.form.get('abatimento_saldo_anterior') or 0)
 
         cols = (['inquilino_id', 'mes_referencia', 'aluguel', 'taxa_pintura'] + ENCARGOS +
-                ['total', 'valor_liquido', 'desconto_administracao', 'data_vencimento',
-                 'status', 'observacao', 'forma_pagamento'])
+                ['total', 'valor_liquido', 'desconto_administracao', 'abatimento_saldo_anterior',
+                 'data_vencimento', 'status', 'observacao', 'forma_pagamento'])
         vals = ([request.form['inquilino_id'], request.form['mes_referencia'],
                   aluguel, taxa_pintura] + [encargos_vals[e] for e in ENCARGOS] +
-                [total, valor_liquido, desconto_admin, data_venc, status,
+                [total, valor_liquido, desconto_admin, abatimento_saldo, data_venc, status,
                  request.form.get('observacao'), request.form.get('forma_pagamento')])
         placeholders = ','.join(['?'] * len(cols))
         conn.execute(f"INSERT INTO pagamentos ({','.join(cols)}) VALUES ({placeholders})", vals)
+        if abatimento_saldo:
+            _ajustar_saldo_anterior(conn, request.form['inquilino_id'], -abatimento_saldo)
         conn.commit()
         conn.close()
         flash('Pagamento lançado!', 'success')
@@ -577,17 +592,23 @@ def pagamento_editar(id):
 
         desconto_admin = float(request.form.get('desconto_administracao') or 0)
         valor_liquido = total - desconto_admin
+        abatimento_saldo = float(request.form.get('abatimento_saldo_anterior') or 0)
+        abatimento_anterior = pagamento['abatimento_saldo_anterior'] or 0
 
         cols = (['inquilino_id', 'mes_referencia', 'aluguel', 'taxa_pintura'] + ENCARGOS +
-                ['total', 'valor_liquido', 'desconto_administracao', 'data_vencimento',
-                 'data_pagamento', 'status', 'observacao', 'forma_pagamento'])
+                ['total', 'valor_liquido', 'desconto_administracao', 'abatimento_saldo_anterior',
+                 'data_vencimento', 'data_pagamento', 'status', 'observacao', 'forma_pagamento'])
         vals = ([request.form['inquilino_id'], request.form['mes_referencia'],
                   aluguel, taxa_pintura] + [encargos_vals[e] for e in ENCARGOS] +
-                [total, valor_liquido, desconto_admin, request.form.get('data_vencimento'),
-                 data_pag, status, request.form.get('observacao'),
-                 request.form.get('forma_pagamento')])
+                [total, valor_liquido, desconto_admin, abatimento_saldo,
+                 request.form.get('data_vencimento'), data_pag, status,
+                 request.form.get('observacao'), request.form.get('forma_pagamento')])
         set_clause = ', '.join(f'{c}=?' for c in cols)
         conn.execute(f"UPDATE pagamentos SET {set_clause} WHERE id=?", vals + [id])
+        if abatimento_anterior:
+            _ajustar_saldo_anterior(conn, pagamento['inquilino_id'], abatimento_anterior)
+        if abatimento_saldo:
+            _ajustar_saldo_anterior(conn, request.form['inquilino_id'], -abatimento_saldo)
         conn.commit()
         conn.close()
         flash('Pagamento atualizado!', 'success')
@@ -601,6 +622,11 @@ def pagamento_editar(id):
 @app.route('/pagamentos/<int:id>/excluir', methods=['POST'])
 def pagamento_excluir(id):
     conn = get_db()
+    pag = conn.execute(
+        'SELECT inquilino_id, abatimento_saldo_anterior FROM pagamentos WHERE id=?', (id,)
+    ).fetchone()
+    if pag and pag['abatimento_saldo_anterior']:
+        _ajustar_saldo_anterior(conn, pag['inquilino_id'], pag['abatimento_saldo_anterior'])
     conn.execute('DELETE FROM pagamentos WHERE id=?', (id,))
     conn.commit()
     conn.close()
