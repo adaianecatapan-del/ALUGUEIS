@@ -409,11 +409,95 @@ def contrato_download(filename):
 def inquilino_excluir(id):
     conn = get_db()
     conn.execute('DELETE FROM pagamentos WHERE inquilino_id=?', (id,))
+    conn.execute('DELETE FROM extrato_lancamentos WHERE inquilino_id=?', (id,))
     conn.execute('DELETE FROM inquilinos WHERE id=?', (id,))
     conn.commit()
     conn.close()
     flash('Inquilino excluído.', 'warning')
     return redirect(url_for('inquilinos'))
+
+
+# ─── EXTRATO (CONTA CORRENTE) DO INQUILINO ─────────────────────────────────────
+
+@app.route('/inquilinos/<int:id>/extrato', methods=['GET', 'POST'])
+def inquilino_extrato(id):
+    conn = get_db()
+    inquilino = conn.execute(
+        'SELECT i.*, im.endereco, im.complemento FROM inquilinos i '
+        'LEFT JOIN imoveis im ON i.imovel_id=im.id WHERE i.id=?', (id,)
+    ).fetchone()
+    if not inquilino:
+        flash('Inquilino não encontrado.', 'warning')
+        return redirect(url_for('inquilinos'))
+
+    if request.method == 'POST':
+        tipo = request.form.get('tipo')
+        valor = float(request.form.get('valor') or 0)
+        debito = valor if tipo == 'debito' else 0
+        credito = valor if tipo == 'credito' else 0
+        conn.execute(
+            'INSERT INTO extrato_lancamentos (inquilino_id, data, descricao, debito, credito) '
+            'VALUES (?,?,?,?,?)',
+            (id, request.form.get('data') or date.today().isoformat(),
+             request.form['descricao'], debito, credito)
+        )
+        conn.commit()
+        conn.close()
+        flash('Lançamento adicionado!', 'success')
+        return redirect(url_for('inquilino_extrato', id=id))
+
+    lancamentos = conn.execute(
+        'SELECT * FROM extrato_lancamentos WHERE inquilino_id=? ORDER BY data, id', (id,)
+    ).fetchall()
+    conn.close()
+
+    linhas = []
+    saldo = 0
+    for l in lancamentos:
+        saldo += (l['debito'] or 0) - (l['credito'] or 0)
+        linhas.append({**dict(l), 'saldo_acumulado': saldo})
+
+    return render_template('extrato.html', inquilino=inquilino, linhas=linhas,
+                           saldo_final=saldo, hoje=date.today().isoformat())
+
+
+@app.route('/extrato/<int:id>/excluir', methods=['POST'])
+def extrato_lancamento_excluir(id):
+    conn = get_db()
+    lanc = conn.execute('SELECT inquilino_id FROM extrato_lancamentos WHERE id=?', (id,)).fetchone()
+    conn.execute('DELETE FROM extrato_lancamentos WHERE id=?', (id,))
+    conn.commit()
+    conn.close()
+    flash('Lançamento excluído.', 'warning')
+    if lanc:
+        return redirect(url_for('inquilino_extrato', id=lanc['inquilino_id']))
+    return redirect(url_for('inquilinos'))
+
+
+@app.route('/inquilinos/<int:id>/extrato/imprimir')
+def inquilino_extrato_imprimir(id):
+    conn = get_db()
+    inquilino = conn.execute(
+        'SELECT i.*, im.endereco, im.complemento FROM inquilinos i '
+        'LEFT JOIN imoveis im ON i.imovel_id=im.id WHERE i.id=?', (id,)
+    ).fetchone()
+    if not inquilino:
+        conn.close()
+        flash('Inquilino não encontrado.', 'warning')
+        return redirect(url_for('inquilinos'))
+    lancamentos = conn.execute(
+        'SELECT * FROM extrato_lancamentos WHERE inquilino_id=? ORDER BY data, id', (id,)
+    ).fetchall()
+    conn.close()
+
+    linhas = []
+    saldo = 0
+    for l in lancamentos:
+        saldo += (l['debito'] or 0) - (l['credito'] or 0)
+        linhas.append({**dict(l), 'saldo_acumulado': saldo})
+
+    return render_template('extrato_print.html', inquilino=inquilino, linhas=linhas,
+                           saldo_final=saldo, hoje=date.today().isoformat())
 
 
 # ─── PAGAMENTOS ───────────────────────────────────────────────────────────────

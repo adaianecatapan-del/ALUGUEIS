@@ -50,6 +50,9 @@
             </td>
             <td class="text-center">
               <div class="d-flex gap-1 justify-content-center">
+                <a href="{{ url_for('inquilino_extrato', id=i.id) }}" class="btn btn-sm btn-outline-success" title="Extrato">
+                  <i class="bi bi-journal-text"></i>
+                </a>
                 <a href="{{ url_for('inquilino_editar', id=i.id) }}" class="btn btn-sm btn-outline-primary" title="Editar">
                   <i class="bi bi-pencil"></i>
                 </a>

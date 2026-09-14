@@ -33,14 +33,21 @@
 {% endmacro %}
 
 {% block content %}
-<div class="d-flex align-items-center mb-4">
-  <a href="{{ url_for('inquilinos') }}" class="btn btn-outline-secondary btn-sm me-3">
-    <i class="bi bi-arrow-left"></i>
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div class="d-flex align-items-center">
+    <a href="{{ url_for('inquilinos') }}" class="btn btn-outline-secondary btn-sm me-3">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <h4 class="fw-bold mb-0">
+      <i class="bi bi-person me-2 text-primary"></i>
+      {{ 'Editar Inquilino' if inquilino else 'Novo Inquilino' }}
+    </h4>
+  </div>
+  {% if inquilino %}
+  <a href="{{ url_for('inquilino_extrato', id=inquilino.id) }}" class="btn btn-outline-success btn-sm">
+    <i class="bi bi-journal-text me-1"></i>Ver Extrato
   </a>
-  <h4 class="fw-bold mb-0">
-    <i class="bi bi-person me-2 text-primary"></i>
-    {{ 'Editar Inquilino' if inquilino else 'Novo Inquilino' }}
-  </h4>
+  {% endif %}
 </div>
 
 <div class="row justify-content-center">

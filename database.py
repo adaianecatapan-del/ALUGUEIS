@@ -91,6 +91,16 @@ def init_db():
         created_at TEXT DEFAULT (date('now'))
     )''')
 
+    c.execute('''CREATE TABLE IF NOT EXISTS extrato_lancamentos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        inquilino_id INTEGER NOT NULL REFERENCES inquilinos(id),
+        data TEXT NOT NULL,
+        descricao TEXT NOT NULL,
+        debito REAL DEFAULT 0,
+        credito REAL DEFAULT 0,
+        created_at TEXT DEFAULT (date('now'))
+    )''')
+
     conn.commit()
     conn.close()
 

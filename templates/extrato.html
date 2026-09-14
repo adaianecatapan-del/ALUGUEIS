@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}Extrato - {{ inquilino.nome }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div class="d-flex align-items-center">
+    <a href="{{ url_for('inquilinos') }}" class="btn btn-outline-secondary btn-sm me-3">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <h4 class="fw-bold mb-0"><i class="bi bi-journal-text me-2 text-primary"></i>Extrato — {{ inquilino.nome }}</h4>
+      <small class="text-muted">{{ inquilino.endereco or 'sem imóvel' }}{% if inquilino.complemento %} — {{ inquilino.complemento }}{% endif %}</small>
+    </div>
+  </div>
+  <a href="{{ url_for('inquilino_extrato_imprimir', id=inquilino.id) }}" target="_blank" class="btn btn-outline-primary">
+    <i class="bi bi-printer me-1"></i>Imprimir
+  </a>
+</div>
+
+<!-- Saldo atual -->
+<div class="card mb-4">
+  <div class="card-body py-3 d-flex justify-content-between align-items-center">
+    <span class="fw-semibold text-muted">Saldo atual</span>
+    <span class="fs-3 fw-bold {% if saldo_final > 0 %}text-danger{% elif saldo_final < 0 %}text-success{% endif %}">
+      R$ {{ "%.2f"|format(saldo_final) }}
+    </span>
+  </div>
+  <div class="card-body pt-0">
+    <small class="text-muted">
+      {% if saldo_final > 0 %}
+        <i class="bi bi-exclamation-circle text-danger me-1"></i>O inquilino deve este valor.
+      {% elif saldo_final < 0 %}
+        <i class="bi bi-check-circle text-success me-1"></i>O inquilino tem crédito (pagou a mais).
+      {% else %}
+        <i class="bi bi-check-circle text-success me-1"></i>Conta zerada.
+      {% endif %}
+    </small>
+  </div>
+</div>
+
+<!-- Novo lançamento -->
+<div class="card mb-4">
+  <div class="card-header fw-semibold bg-light border-0">
+    <i class="bi bi-plus-lg me-2"></i>Novo Lançamento
+  </div>
+  <div class="card-body">
+    <form method="post" class="row g-2 align-items-end">
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-semibold mb-1">Data</label>
+        <input type="date" name="data" class="form-control form-control-sm" value="{{ hoje }}" required>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label small fw-semibold mb-1">Descrição</label>
+        <input type="text" name="descricao" class="form-control form-control-sm" required
+               placeholder="Ex: Aluguel ref 05/2026, tx de adm, IPTU 1/8...">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-semibold mb-1">Tipo</label>
+        <select name="tipo" class="form-select form-select-sm">
+          <option value="debito">Débito (aumenta a dívida)</option>
+          <option value="credito">Crédito (pagamento)</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-semibold mb-1">Valor (R$)</label>
+        <input type="number" name="valor" class="form-control form-control-sm" step="0.01" min="0" required>
+      </div>
+      <div class="col-6 col-md-2">
+        <button type="submit" class="btn btn-sm btn-primary w-100">
+          <i class="bi bi-check-lg me-1"></i>Adicionar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Lançamentos -->
+<div class="card">
+  <div class="card-header fw-semibold bg-light border-0">
+    <i class="bi bi-list-ul me-2"></i>Lançamentos
+  </div>
+  <div class="card-body p-0">
+    {% if linhas %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Data</th>
+            <th>Descrição</th>
+            <th class="text-end">Débito</th>
+            <th class="text-end">Crédito</th>
+            <th class="text-end">Saldo</th>
+            <th class="text-center">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in linhas %}
+          <tr>
+            <td>{{ l.data.split('-')[2] }}/{{ l.data.split('-')[1] }}/{{ l.data.split('-')[0] }}</td>
+            <td>{{ l.descricao }}</td>
+            <td class="text-end">{{ "R$ %.2f"|format(l.debito) if l.debito else '—' }}</td>
+            <td class="text-end text-success">{{ "R$ %.2f"|format(l.credito) if l.credito else '—' }}</td>
+            <td class="text-end fw-bold {% if l.saldo_acumulado > 0 %}text-danger{% elif l.saldo_acumulado < 0 %}text-success{% endif %}">
+              R$ {{ "%.2f"|format(l.saldo_acumulado) }}
+            </td>
+            <td class="text-center">
+              <form method="post" action="{{ url_for('extrato_lancamento_excluir', id=l.id) }}" onsubmit="return confirm('Excluir este lançamento?')">
+                <button class="btn btn-sm btn-outline-danger">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-inbox fs-1 mb-3"></i>
+      <p>Nenhum lançamento ainda. Adicione o primeiro acima.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
