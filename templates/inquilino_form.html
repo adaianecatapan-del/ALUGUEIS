@@ -187,9 +187,39 @@
                 <span class="input-group-text">R$</span>
                 <input type="number" name="taxa_pintura" class="form-control" step="0.01" min="0"
                        id="val_pintura" value="{{ inquilino.taxa_pintura if inquilino else '0.00' }}"
-                       oninput="calcPintura(); calcTotal()">
+                       oninput="calcPintura(); calcTotal(); previewParcelas('pintura')">
               </div>
-              <div id="pintura_preview" class="small"></div>
+              <div class="mb-2">
+                <label class="form-label small mb-1">Forma de cobrança</label>
+                <select name="pintura_forma" id="pintura_forma" class="form-select form-select-sm" onchange="togglePinturaForma()">
+                  <option value="entrada_saida" {% if not inquilino or (inquilino.pintura_forma or 'entrada_saida') == 'entrada_saida' %}selected{% endif %}>50% na entrada e 50% na saída do contrato</option>
+                  <option value="parcelado" {% if inquilino and inquilino.pintura_forma == 'parcelado' %}selected{% endif %}>Parcelado (igual aos outros encargos)</option>
+                </select>
+              </div>
+              <div id="pintura_entrada_saida_box">
+                <div id="pintura_entrada_saida_preview" class="small"></div>
+              </div>
+              <div id="pintura_parcelado_box" class="d-none">
+                <div class="row g-2 mb-1">
+                  <div class="col-6">
+                    <label class="form-label small mb-1">Nº de parcelas</label>
+                    <select name="pintura_n_parcelas" class="form-select form-select-sm" id="pintura_n_parcelas" onchange="calcTotal(); previewParcelas('pintura')">
+                      {% for n, lbl in [(1,'1x (cota única)'),(2,'2x'),(3,'3x'),(4,'4x'),(5,'5x'),(6,'6x'),(7,'7x'),(8,'8x'),(9,'9x'),(10,'10x'),(11,'11x'),(12,'12x (mensal)')] %}
+                      <option value="{{ n }}" {% if inquilino and (inquilino.pintura_n_parcelas or 1) == n %}selected{% elif not inquilino and n == 1 %}selected{% endif %}>{{ lbl }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label small mb-1">Mês de início</label>
+                    <select name="pintura_mes_inicio" class="form-select form-select-sm" id="pintura_mes" onchange="previewParcelas('pintura')">
+                      {% for m, nome in [(1,'Jan'),(2,'Fev'),(3,'Mar'),(4,'Abr'),(5,'Mai'),(6,'Jun'),(7,'Jul'),(8,'Ago'),(9,'Set'),(10,'Out'),(11,'Nov'),(12,'Dez')] %}
+                      <option value="{{ m }}" {% if inquilino and (inquilino.pintura_mes_inicio or 1) == m %}selected{% elif not inquilino and m == 1 %}selected{% endif %}>{{ nome }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <div id="pintura_preview" class="small text-muted"></div>
+              </div>
             </div>
 
             <!-- Total mensal -->
@@ -285,6 +315,11 @@ function calcTotal() {
     const n = parseInt(document.getElementById(slug + '_n_parcelas').value) || 12;
     total += v > 0 ? v / n : 0;
   });
+  if (document.getElementById('pintura_forma').value === 'parcelado') {
+    const vp = parseFloat(document.getElementById('val_pintura').value) || 0;
+    const np = parseInt(document.getElementById('pintura_n_parcelas').value) || 1;
+    total += vp > 0 ? vp / np : 0;
+  }
   document.getElementById('total_mensal').textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
   const adminFixo = parseFloat(document.getElementById('val_admin_fixo').value) || 0;
@@ -360,7 +395,7 @@ function calcPintura() {
   const val = parseFloat(document.getElementById('val_pintura').value) || 0;
   const inicio = document.getElementById('data_inicio').value;
   const fim = document.getElementById('data_fim').value;
-  const div = document.getElementById('pintura_preview');
+  const div = document.getElementById('pintura_entrada_saida_preview');
   if (val <= 0) { div.innerHTML = ''; return; }
   const metade = (val / 2).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   let html = '<div class="mt-1">';
@@ -371,9 +406,21 @@ function calcPintura() {
   div.innerHTML = html;
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+function togglePinturaForma() {
+  const forma = document.getElementById('pintura_forma').value;
+  document.getElementById('pintura_entrada_saida_box').classList.toggle('d-none', forma !== 'entrada_saida');
+  document.getElementById('pintura_parcelado_box').classList.toggle('d-none', forma !== 'parcelado');
   calcTotal();
+  previewParcelas('pintura');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
   calcPintura();
+  const pinturaForma = document.getElementById('pintura_forma').value;
+  document.getElementById('pintura_entrada_saida_box').classList.toggle('d-none', pinturaForma !== 'entrada_saida');
+  document.getElementById('pintura_parcelado_box').classList.toggle('d-none', pinturaForma !== 'parcelado');
+  previewParcelas('pintura');
+  calcTotal();
   ENCARGO_SLUGS.forEach(previewParcelas);
 });
 </script>

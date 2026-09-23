@@ -102,7 +102,7 @@
         <div class="small text-muted mb-2">
           {% if p.aluguel > 0 %}<div>Aluguel: R$ {{ "%.2f"|format(p.aluguel) }}</div>{% endif %}
           {% if p.taxa_pintura > 0 %}
-            <div>Pintura{% if p.observacao in ['pintura-inicio','pintura-fim'] %} ({{ 'entrada' if p.observacao == 'pintura-inicio' else 'saída' }}){% endif %}: R$ {{ "%.2f"|format(p.taxa_pintura) }}</div>
+            <div>Pintura{% if p.observacao in ['pintura-inicio','pintura-fim'] %} ({{ 'entrada' if p.observacao == 'pintura-inicio' else 'saída' }}){% elif p.pintura_parcela %} {{ p.pintura_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.taxa_pintura) }}</div>
           {% endif %}
           {% if p.iptu > 0 %}<div>IPTU{% if p.iptu_parcela %} {{ p.iptu_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.iptu) }}</div>{% endif %}
           {% if p.taxa_lixo > 0 %}<div>Lixo{% if p.lixo_parcela %} {{ p.lixo_parcela }}{% endif %}: R$ {{ "%.2f"|format(p.taxa_lixo) }}</div>{% endif %}

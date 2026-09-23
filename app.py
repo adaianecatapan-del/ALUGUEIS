@@ -146,8 +146,10 @@ def _encargo_form_values():
 
 # ─── HELPER PINTURA ───────────────────────────────────────────────────────────
 
-def _criar_pintura_payments(conn, inq_id, taxa_pintura, data_inicio, data_fim):
+def _criar_pintura_payments(conn, inq_id, taxa_pintura, data_inicio, data_fim, pintura_forma='entrada_saida'):
     if not taxa_pintura or taxa_pintura <= 0:
+        return
+    if pintura_forma == 'parcelado':
         return
     hoje = date.today().isoformat()
     metade = round(taxa_pintura / 2, 2)
@@ -340,11 +342,13 @@ def inquilino_novo():
         data_inicio = request.form.get('data_inicio') or None
         data_fim = request.form.get('data_fim') or None
         taxa_pintura = float(request.form.get('taxa_pintura') or 0)
+        pintura_forma = request.form.get('pintura_forma') or 'entrada_saida'
 
         cols = (['nome', 'cpf', 'telefone', 'email', 'imovel_id', 'data_inicio', 'data_fim',
                   'aluguel', 'taxa_pintura', 'dia_vencimento'] +
                 _encargo_cols() +
                 ['taxa_administracao_valor_fixo', 'saldo_anterior', 'saldo_anterior_obs',
+                 'pintura_forma', 'pintura_n_parcelas', 'pintura_mes_inicio',
                  'data_ultimo_reajuste', 'observacao'])
         vals = ([request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
                   request.form.get('email'), request.form.get('imovel_id') or None,
@@ -355,6 +359,9 @@ def inquilino_novo():
                 [float(request.form.get('taxa_administracao_valor_fixo') or 0),
                  float(request.form.get('saldo_anterior') or 0),
                  request.form.get('saldo_anterior_obs'),
+                 pintura_forma,
+                 int(request.form.get('pintura_n_parcelas') or 1),
+                 int(request.form.get('pintura_mes_inicio') or 1),
                  data_inicio, request.form.get('observacao')])
         placeholders = ','.join(['?'] * len(cols))
         cursor = conn.execute(
@@ -364,7 +371,7 @@ def inquilino_novo():
         contrato_arquivo = _salvar_contrato(inq_id)
         if contrato_arquivo:
             conn.execute('UPDATE inquilinos SET contrato_arquivo=? WHERE id=?', (contrato_arquivo, inq_id))
-        _criar_pintura_payments(conn, inq_id, taxa_pintura, data_inicio, data_fim)
+        _criar_pintura_payments(conn, inq_id, taxa_pintura, data_inicio, data_fim, pintura_forma)
         conn.commit()
         conn.close()
         flash('Inquilino cadastrado com sucesso!', 'success')
@@ -382,6 +389,7 @@ def inquilino_editar(id):
         data_inicio = request.form.get('data_inicio') or None
         data_fim = request.form.get('data_fim') or None
         taxa_pintura = float(request.form.get('taxa_pintura') or 0)
+        pintura_forma = request.form.get('pintura_forma') or 'entrada_saida'
         novo_aluguel = float(request.form.get('aluguel') or 0)
         data_ultimo_reajuste = inquilino['data_ultimo_reajuste'] or data_inicio
         if request.form.get('aplicar_reajuste') == '1':
@@ -391,6 +399,7 @@ def inquilino_editar(id):
                   'aluguel', 'taxa_pintura', 'dia_vencimento'] +
                 _encargo_cols() +
                 ['taxa_administracao_valor_fixo', 'saldo_anterior', 'saldo_anterior_obs',
+                 'pintura_forma', 'pintura_n_parcelas', 'pintura_mes_inicio',
                  'data_ultimo_reajuste', 'ativo', 'observacao'])
         vals = ([request.form['nome'], request.form.get('cpf'), request.form.get('telefone'),
                   request.form.get('email'), request.form.get('imovel_id') or None,
@@ -400,6 +409,9 @@ def inquilino_editar(id):
                 [float(request.form.get('taxa_administracao_valor_fixo') or 0),
                  float(request.form.get('saldo_anterior') or 0),
                  request.form.get('saldo_anterior_obs'),
+                 pintura_forma,
+                 int(request.form.get('pintura_n_parcelas') or 1),
+                 int(request.form.get('pintura_mes_inicio') or 1),
                  data_ultimo_reajuste, 1 if request.form.get('ativo') else 0,
                  request.form.get('observacao')])
         set_clause = ', '.join(f'{c}=?' for c in cols)
@@ -407,7 +419,7 @@ def inquilino_editar(id):
         contrato_arquivo = _salvar_contrato(id)
         if contrato_arquivo:
             conn.execute('UPDATE inquilinos SET contrato_arquivo=? WHERE id=?', (contrato_arquivo, id))
-        _criar_pintura_payments(conn, id, taxa_pintura, data_inicio, data_fim)
+        _criar_pintura_payments(conn, id, taxa_pintura, data_inicio, data_fim, pintura_forma)
         conn.commit()
         conn.close()
         flash('Inquilino atualizado!', 'success')
@@ -628,9 +640,21 @@ def pagamento_gerar():
                 data_venc = f"{ano:04d}-{mes:02d}-{dia_venc:02d}"
 
                 total = inq['aluguel'] or 0
+                pintura_val = 0
+                pintura_parcela = None
+                if inq['pintura_forma'] == 'parcelado':
+                    info_pintura = _get_parcela(
+                        inq['taxa_pintura'] or 0, inq['pintura_n_parcelas'] or 1,
+                        inq['pintura_mes_inicio'] or 1, mes
+                    )
+                    if info_pintura:
+                        pintura_val = info_pintura[0]
+                        pintura_parcela = f"{info_pintura[1]}/{info_pintura[2]}"
+                        total += pintura_val
+
                 pag_cols = ['inquilino_id', 'mes_referencia', 'aluguel', 'taxa_pintura',
-                            'data_vencimento']
-                pag_vals = [iid, mes_ref, inq['aluguel'] or 0, 0, data_venc]
+                            'pintura_parcela', 'data_vencimento']
+                pag_vals = [iid, mes_ref, inq['aluguel'] or 0, pintura_val, pintura_parcela, data_venc]
                 for e in ENCARGOS:
                     info = _get_parcela(
                         inq[e] or 0, inq[f'{e}_n_parcelas'] or 12, inq[f'{e}_mes'] or 1, mes

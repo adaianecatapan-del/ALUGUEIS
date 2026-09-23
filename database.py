@@ -134,6 +134,9 @@ def migrate_db():
         ('taxa_administracao_valor_fixo', 'REAL DEFAULT 0'),
         ('saldo_anterior', 'REAL DEFAULT 0'),
         ('saldo_anterior_obs', 'TEXT'),
+        ('pintura_forma', "TEXT DEFAULT 'entrada_saida'"),
+        ('pintura_n_parcelas', 'INTEGER DEFAULT 1'),
+        ('pintura_mes_inicio', 'INTEGER DEFAULT 1'),
     ]:
         try:
             conn.execute(f'ALTER TABLE inquilinos ADD COLUMN {col} {defn}')
@@ -154,6 +157,7 @@ def migrate_db():
         ('valor_liquido', 'REAL'),
         ('desconto_administracao', 'REAL DEFAULT 0'),
         ('abatimento_saldo_anterior', 'REAL DEFAULT 0'),
+        ('pintura_parcela', 'TEXT'),
     ]:
         try:
             conn.execute(f'ALTER TABLE pagamentos ADD COLUMN {col} {defn}')
