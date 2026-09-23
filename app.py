@@ -596,7 +596,8 @@ def inquilino_extrato_imprimir(id):
     linhas, saldo = _calc_linhas_extrato(lancamentos)
 
     return render_template('extrato_print.html', inquilino=inquilino, linhas=linhas,
-                           saldo_final=saldo, hoje=date.today().isoformat())
+                           saldo_final=saldo, hoje=date.today().isoformat(),
+                           LINHAS_EM_BRANCO=max(25, len(linhas) + 15))
 
 
 # ─── PAGAMENTOS ───────────────────────────────────────────────────────────────
