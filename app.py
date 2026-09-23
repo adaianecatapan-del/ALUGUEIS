@@ -498,6 +498,33 @@ def extrato_lancamento_excluir(id):
     return redirect(url_for('inquilinos'))
 
 
+def _fmt_brl(valor):
+    return f"{valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+
+
+def _detalhar_composicao_pagamento(p):
+    """Monta um texto tipo 'Aluguel R$1.500,00 + IPTU 2/6 R$181,35' com os itens do pagamento."""
+    itens = []
+    if p['aluguel']:
+        itens.append(f"Aluguel R${_fmt_brl(p['aluguel'])}")
+    if p['taxa_pintura']:
+        parcela = f" {p['pintura_parcela']}" if p['pintura_parcela'] else ''
+        itens.append(f"Pintura{parcela} R${_fmt_brl(p['taxa_pintura'])}")
+    for campo, parcela_campo, label in [
+        ('iptu', 'iptu_parcela', 'IPTU'),
+        ('taxa_lixo', 'lixo_parcela', 'Lixo'),
+        ('gas', 'gas_parcela', 'Gás'),
+        ('internet', 'internet_parcela', 'Internet'),
+        ('taxa_agua', 'taxa_agua_parcela', 'Água'),
+        ('taxa_administracao', 'taxa_administracao_parcela', 'Administração'),
+    ]:
+        valor = p[campo] if campo in p.keys() else None
+        if valor:
+            parcela = p[parcela_campo] if parcela_campo in p.keys() and p[parcela_campo] else ''
+            itens.append(f"{label}{' ' + parcela if parcela else ''} R${_fmt_brl(valor)}")
+    return ' + '.join(itens)
+
+
 @app.route('/inquilinos/<int:id>/extrato/importar-pagamentos', methods=['POST'])
 def inquilino_extrato_importar_pagamentos(id):
     conn = get_db()
@@ -511,7 +538,8 @@ def inquilino_extrato_importar_pagamentos(id):
     importados = 0
     for p in pagamentos:
         ano, mes = p['mes_referencia'].split('-')
-        descricao = f"Aluguel ref {mes}/{ano}"
+        composicao = _detalhar_composicao_pagamento(p)
+        descricao = f"Ref {mes}/{ano}" + (f" ({composicao})" if composicao else '')
         if p['observacao'] == 'pintura-inicio':
             descricao = f"Pintura (entrada) {mes}/{ano}"
         elif p['observacao'] == 'pintura-fim':
